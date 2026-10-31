@@ -15,8 +15,8 @@ The course deadline is the outer limit: PR open by **2:00 AM Thursday**, reviewe
 
 ## Communication
 
-- **Team channel:** `<Discord / Slack / other>`
-- **How someone says they are out** (so the deputy can merge): `<e.g. post in #standup before the sprint deadline>`
+- **Team channel:** `Discord`
+- **How someone says they are out** `Post in #standup before the sprint deadline>`
 
 ## Signed
 
@@ -25,3 +25,4 @@ Everyone on the team adds their name and GitHub username in the PR that commits 
 | Name | GitHub |
 |---|---|
 | | |
+Alexander Trujillo | aTrujillo4321
