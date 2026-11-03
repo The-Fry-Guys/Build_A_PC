@@ -26,7 +26,7 @@
 ## 4. Scope: MVP, vertical slice, and not building
 
 - **Vertical slice:** `PRD-3: View part compatability issues`
-- **Not building (this term):** `live price updating, sharing features, price history graphs`
+- **Not building (this term):** `live price updating, real shop links, price history graphs`
 
 ## 5. User stories and acceptance criteria
 
@@ -45,7 +45,11 @@ test.
 | PRD-7 | As a `user`, I don't want to `have to log in to view general pc part information` so that `I can quickly check prices or part model numbers` | Given `a user`, when `a user views the app or website`, then `they will be given a chance to sign in, but if they don't want to, they can still view general information` |
 | PRD-8 | As a `user`, I want to `be able to view my profile information` so that `I can modify profile information, such as my name, username, and password (if I've forgotten it)` | Given `a user`, when `a user views their profile`, then `they will be able to modify the fields of their profile to suit their needs` |
 | PRD-9 | As a `user`, I want to `be able to remove my profile from the platform` so that `I can delete my account` | Given `a user`, when `a user deletes their account`, then `all of that user's data will be purged from the database` |
-
+| PRD-10 | As a `user`, I want to `get suggested pc parts that fit within my budget` so that `I can conveniently pick parts from each section that I can afford` | Given `a logged in user with a budget`, when `a user views a type of part`, then `a few suggestions with average prices that fit within their budget appear to pick in a suggested section` |
+| PRD-11 | As a `user`, I want to `be able to set a budget` so that `I can stay under a set price, and be able to allocate certain budget ranges to specific parts` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a total budget will be available to set, along with optional per-part budgets that will adjust to have a max range underneath the remaining budget` |
+| PRD-12 | As a `user`, I want to `be able to set a budget` so that `I can stay under a set price, and be able to allocate certain budget ranges to specific parts` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a total budget will be available to set, along with optional per-part budgets that will adjust to have a max range underneath the remaining budget` |
+| PRD-13 | As a `user`, I want to `be able to share a pc (any progress) with other users via link` so that `I can build PCs for friends and or family and change the build based on input` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a share build button will be available to select, which will copy a link to their clipboard that will allow other users to view a copy of that build` |
+| PRD-14 | As a `user`, I want to `login with GitHub` so that `I have multiple options to access my account`. | **Given** `a login screen`, **when** `a user views the screen`, **then** `they will be able to use GitHub oauth to gain access to the app`. |
 
 ---
 
