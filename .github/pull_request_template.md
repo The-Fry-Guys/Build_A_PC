@@ -1,7 +1,9 @@
-Issues closed: #
+Closes #
 
 ## What changed
 
+## What was tested
+Current overall coverage number: __%
 
 ## How to test
 1.
@@ -13,6 +15,10 @@ Issues closed: #
 - [] Tests added or updated; `./gradlew build` passes in `backend/` or `frontend/`
 - [] `docs/openapi.yaml` updated if the API contract changed
 - [] No secrets, keys, or `.env` files committed
+
+## Merge Captain & Deputy
+Captain: @
+Deputy: @
 
 ## Reviewers
 @
