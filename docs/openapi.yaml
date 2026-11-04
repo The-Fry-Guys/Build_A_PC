@@ -1,0 +1,386 @@
+openapi: 3.0.3
+info:
+  title: Build A PC API
+  description: API for managing PC builds, part compatibility, and user accounts across web and Android.
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: Base API routing
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: API-issued short-lived JWT from /auth endpoints.
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        role:
+          type: string
+          enum: [ USER, ADMIN ]
+        created_at:
+          type: string
+          format: date-time
+
+    Part:
+      type: object
+      description: General part information mapping to CATALOG_PARTS.
+      properties:
+        part_id:
+          type: string
+          format: uuid
+        category:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+          format: double
+        created_at:
+          type: string
+          format: date-time
+
+    Build:
+      type: object
+      description: User PC build mapping to PC_BUILDS.
+      properties:
+        build_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    BuildCompatibility:
+      type: object
+      properties:
+        compatible:
+          type: boolean
+        issues:
+          type: array
+          items:
+            type: string
+
+    ProblemDetail:
+      type: object
+      description: RFC 9457 Problem Details for errors.
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    AuthRequest:
+      type: object
+      properties:
+        code:
+          type: string
+        code_verifier:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Short-lived JWT.
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+paths:
+  /auth/github:
+    post:
+      tags: [Auth]
+      summary: Exchange GitHub authorization code for API JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/google:
+    post:
+      tags: [ Auth ]
+      summary: Exchange Google authorization code for API JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /users/me:
+    get:
+      tags: [ Users ]
+      summary: Get current logged-in user profile
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: User profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [ Users ]
+      summary: Update user profile
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: Profile updated
+    delete:
+      tags: [ Users ]
+      summary: Delete user account
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Account deleted successfully
+
+  /parts:
+    get:
+      tags: [ Parts ]
+      summary: Get list of general PC parts
+      responses:
+        '200':
+          description: A list of parts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Part'
+    post:
+      tags: [ Parts ]
+      summary: Add a new PC part
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '201':
+          description: Part created
+
+  /parts/{id}:
+    get:
+      tags: [ Parts ]
+      summary: Get specific part details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Part details
+    put:
+      tags: [ Parts ]
+      summary: Update specific part details
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Part updated
+
+  /builds:
+    get:
+      tags: [ Builds ]
+      summary: Retrieve all saved builds for the authenticated user
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: List of user builds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Build'
+    post:
+      tags: [ Builds ]
+      summary: Initialize a new PC build
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '201':
+          description: Build created
+
+  /builds/{id}:
+    get:
+      tags: [ Builds ]
+      summary: Retrieve a specific build
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Build details and selected parts
+    put:
+      tags: [ Builds ]
+      summary: Modify a build (add/remove parts)
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Build updated
+
+  /builds/{id}/compatibility:
+    get:
+      tags: [ Builds ]
+      summary: Evaluate build compatibility
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Compatibility status and conflicts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildCompatibility'
+
+  /admin/users:
+    get:
+      tags: [ Admin ]
+      summary: View and search user data
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: List of all users (Admin only)
+
+  /admin/users/{id}:
+    delete:
+      tags: [ Admin ]
+      summary: Delete a user
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: User deleted by admin
+
+  /admin/parts:
+    post:
+      tags: [ Admin ]
+      summary: Add new part data
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '201':
+          description: Part created by admin
+
+  /admin/parts/{id}:
+    put:
+      tags: [ Admin ]
+      summary: Update existing part information
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Part updated by admin
+    delete:
+      tags: [ Admin ]
+      summary: Remove part data
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Part deleted by admin
