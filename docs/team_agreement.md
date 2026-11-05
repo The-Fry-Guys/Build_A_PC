@@ -24,5 +24,8 @@ Everyone on the team adds their name and GitHub username in the PR that commits 
 
 | Name | GitHub |
 |---|---|
+| | |
+| Austin Phipps | auPhippsCSUMB |
 | Alexander Trujillo | aTrujillo4321 |
 | Kyle Parker | kyle-parker-1500 |
+
