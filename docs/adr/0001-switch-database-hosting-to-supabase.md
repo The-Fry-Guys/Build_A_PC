@@ -10,10 +10,11 @@
 
 ## Context
 
-While designing the project, we considered Railway and Supabase as database hosts.
-We decided Supabase was a better fit for the project and its OAuth plans. The application
-API, including the OAuth flow, is implemented separately in Spring Boot and hosted on Render.
-Supabase can generate a REST API from its database, but that is not the project's application API.
+While designing the project, we considered Railway and Supabase as database hosts. We had not
+created a database on either platform, so we chose Supabase before implementation. We felt it was
+a better fit for the project and its OAuth plans. The application API, including the OAuth flow,
+will be implemented separately in Spring Boot and hosted on Render. Supabase can generate a REST API
+from its database, but that is not the project's application API.
 
 ## Options considered
 
@@ -29,6 +30,6 @@ will connect to it; the generated Supabase REST API is not the project's applica
 
 ## Consequences
 
-- **Good:** We can create and configure its database on the selected platform from the start.
+- **Good:** We can create and configure our database on the selected platform from the start.
 - **Bad:** The API must be configured with Supabase connection details, which must be kept secret (`.env`).
 - **Follow-up:** Create the Supabase database and configure the Spring Boot API on Render to connect to it.

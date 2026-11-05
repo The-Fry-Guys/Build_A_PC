@@ -2,20 +2,20 @@
 
 ## Planned vs. done
 
-- **Planned:** Docs, Docker, SpringBoot, Expo, OAuth
-- **Done:** 7 PRs merged: PRD and team documentation (#12, #16, #17),
-  CI workflows (#1, #2), and OpenAPI contract (#19), Expo & Spring Boot (#24),
-  Documentation (this PR, unsure of the #), Docker (not merged yet as of (5:22 PM 11/4)).
+- **Planned:** Documentation, Docker, Spring Boot, Expo, and OAuth. Story sizes not been recorded yet.
+- **Done:** 9 PRs merged: documentation and project setup (#12, #16, #17, #19, #20),
+  Android scaffold (#15), CI workflows (#1, #2), and Expo plus Spring Boot scaffolds (#24).
+  Docker setup and OAuth haven't been implemented yet, Docker should be done today though.
 
 ## Carried over
 
-The merged work is mostly project setup. Since we didn't have a prior sprint, no work was carried over
-and we finished most of the planned work. 
+We had no work to carry into Sprint 1. Docker setup, OAuth, and the product's vertical-slice
+features remain to be done.
 
 ## What we learned
 
-We established the project foundation, but the repo does not yet show planned story sizes and no
-user facing features have been completed just yet.
+We established the project foundation, but no user-facing feature is shown as completed in the
+merged PRs.
 
 ## Change for next sprint
 
