@@ -2,7 +2,7 @@
 
 [Back to the Project 03 guide](README.md)
 
-**Team:** `The Fry Guys` · **Repo:** `https://github.com/The-Fry-Guys/Build_A_PC` · **Last updated:** `10/28/2026`
+**Team:** `The Fry Guys` · **Repo:** `https://github.com/The-Fry-Guys/Build_A_PC` · **Last updated:** `11/04/2026`
 
 ---
 
@@ -51,6 +51,20 @@ test.
 | PRD-13 | As a `user`, I want to `be able to share a pc (any progress) with other users via link` so that `I can build PCs for friends and or family and change the build based on input` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a share build button will be available to select, which will copy a link to their clipboard that will allow other users to view a copy of that build` |
 | PRD-14 | As a `user`, I want to `login with GitHub` so that `I have multiple options to access my account`. | **Given** `a login screen`, **when** `a user views the screen`, **then** `they will be able to use GitHub oauth to gain access to the app`. |
 
+## 6. API error responses
+
+Errors use the RFC 9457 Problem Details format (`application/problem+json`). The response
+includes the HTTP status, a short title, a readable detail, and the request path. Validation
+errors may also include the invalid field and a message.
+
+| Code | Meaning | Message |
+|---|---|---|
+| 400 | Malformed request or invalid input | “Request body is missing or malformed.”<br>“A request parameter has an invalid value.”<br>“Request validation failed.” |
+| 401 | Authentication is required or invalid | “Authentication is required to access this resource.” |
+| 403 | User is not allowed to perform the action | “You are not allowed to access this resource.” |
+| 404 | Route or resource was not found | “The requested resource was not found.” |
+| 500 | Unexpected server error | “An unexpected error occurred.” |
+
 ---
 
 ### Change log
@@ -60,3 +74,4 @@ test.
 | `10/28` | `#1` | Detekt CI added |
 | `10/28` | `#2` | Android CI added |
 | `10/29` | `#3` | PRD |
+| `11/04` | `—` | Added the API error response contract |
