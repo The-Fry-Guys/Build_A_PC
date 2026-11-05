@@ -82,19 +82,39 @@ components:
     ProblemDetail:
       type: object
       description: RFC 9457 Problem Details for errors.
+      required: [type, title, status]
       properties:
         type:
           type: string
           format: uri
+          description: A URI reference identifying the problem type; about:blank is used for generic problems.
+          example: about:blank
         title:
           type: string
+          description: A short, human-readable summary of the problem.
         status:
           type: integer
+          description: The HTTP status code for this occurrence.
+          minimum: 400
+          maximum: 599
         detail:
           type: string
+          description: A human-readable explanation specific to this occurrence.
         instance:
           type: string
-          format: uri
+          format: uri-reference
+          description: The request path for this occurrence.
+        errors:
+          type: array
+          description: Optional field validation errors.
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+              message:
+                type: string
 
     AuthRequest:
       type: object
@@ -111,10 +131,34 @@ components:
           type: string
           description: Short-lived JWT.
   responses:
+    BadRequest:
+      description: The request is malformed or fails validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
     Unauthorized:
       description: Missing or invalid JWT
       content:
-        application/json:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Forbidden:
+      description: The authenticated user is not allowed to perform this action.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    NotFound:
+      description: The requested route or resource was not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    InternalServerError:
+      description: An unexpected server error occurred.
+      content:
+        application/problem+json:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
 
@@ -136,6 +180,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /auth/google:
     post:
@@ -154,6 +202,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /users/me:
     get:
@@ -170,6 +222,8 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     put:
       tags: [ Users ]
       summary: Update user profile
@@ -178,6 +232,12 @@ paths:
       responses:
         '200':
           description: Profile updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     delete:
       tags: [ Users ]
       summary: Delete user account
@@ -186,6 +246,10 @@ paths:
       responses:
         '204':
           description: Account deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /parts:
     get:
@@ -200,6 +264,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Part'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [ Parts ]
       summary: Add a new PC part
@@ -208,6 +274,14 @@ paths:
       responses:
         '201':
           description: Part created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /parts/{id}:
     get:
@@ -223,6 +297,10 @@ paths:
       responses:
         '200':
           description: Part details
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     put:
       tags: [ Parts ]
       summary: Update specific part details
@@ -238,6 +316,16 @@ paths:
       responses:
         '200':
           description: Part updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /builds:
     get:
@@ -254,6 +342,10 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Build'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     post:
       tags: [ Builds ]
       summary: Initialize a new PC build
@@ -262,6 +354,12 @@ paths:
       responses:
         '201':
           description: Build created
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /builds/{id}:
     get:
@@ -279,6 +377,14 @@ paths:
       responses:
         '200':
           description: Build details and selected parts
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     put:
       tags: [ Builds ]
       summary: Modify a build (add/remove parts)
@@ -294,6 +400,16 @@ paths:
       responses:
         '200':
           description: Build updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /builds/{id}/compatibility:
     get:
@@ -315,6 +431,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BuildCompatibility'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /admin/users:
     get:
@@ -325,6 +449,12 @@ paths:
       responses:
         '200':
           description: List of all users (Admin only)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /admin/users/{id}:
     delete:
@@ -342,6 +472,14 @@ paths:
       responses:
         '204':
           description: User deleted by admin
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /admin/parts:
     post:
@@ -352,6 +490,14 @@ paths:
       responses:
         '201':
           description: Part created by admin
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
   /admin/parts/{id}:
     put:
@@ -369,6 +515,16 @@ paths:
       responses:
         '200':
           description: Part updated by admin
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     delete:
       tags: [ Admin ]
       summary: Remove part data
@@ -384,3 +540,11 @@ paths:
       responses:
         '204':
           description: Part deleted by admin
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'

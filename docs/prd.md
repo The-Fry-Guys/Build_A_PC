@@ -2,7 +2,7 @@
 
 [Back to the Project 03 guide](README.md)
 
-**Team:** `The Fry Guys` · **Repo:** `https://github.com/The-Fry-Guys/Build_A_PC` · **Last updated:** `10/28/2026`
+**Team:** `The Fry Guys` · **Repo:** `https://github.com/The-Fry-Guys/Build_A_PC` · **Last updated:** `11/04/2026`
 
 ---
 
@@ -46,10 +46,24 @@ test.
 | PRD-8 | As a `user`, I want to `be able to view my profile information` so that `I can modify profile information, such as my name, username, and password (if I've forgotten it)` | Given `a user`, when `a user views their profile`, then `they will be able to modify the fields of their profile to suit their needs` |
 | PRD-9 | As a `user`, I want to `be able to remove my profile from the platform` so that `I can delete my account` | Given `a user`, when `a user deletes their account`, then `all of that user's data will be purged from the database` |
 | PRD-10 | As a `user`, I want to `get suggested pc parts that fit within my budget` so that `I can conveniently pick parts from each section that I can afford` | Given `a logged in user with a budget`, when `a user views a type of part`, then `a few suggestions with average prices that fit within their budget appear to pick in a suggested section` |
-| PRD-11 | As a `user`, I want to `be able to set a budget` so that `I can stay under a set price, and be able to allocate certain budget ranges to specific parts` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a total budget will be available to set, along with optional per-part budgets that will adjust to have a max range underneath the remaining budget` |
-| PRD-12 | As a `user`, I want to `be able to set a budget` so that `I can stay under a set price, and be able to allocate certain budget ranges to specific parts` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a total budget will be available to set, along with optional per-part budgets that will adjust to have a max range underneath the remaining budget` |
+| PRD-11 | As a `user`, I want to `set a total budget for a PC build` so that `I can keep the whole build under a spending limit`. | **Given** `a logged-in user viewing a build`, **when** `they set a total budget`, **then** `the build displays that budget and its remaining amount`. |
+| PRD-12 | As a `user`, I want to `set budget limits for part categories` so that `I can control how much I spend on each type of component`. | **Given** `a build with a total budget`, **when** `the user assigns budgets to part categories`, **then** `the category limits cannot exceed the remaining total budget`. |
 | PRD-13 | As a `user`, I want to `be able to share a pc (any progress) with other users via link` so that `I can build PCs for friends and or family and change the build based on input` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a share build button will be available to select, which will copy a link to their clipboard that will allow other users to view a copy of that build` |
 | PRD-14 | As a `user`, I want to `login with GitHub` so that `I have multiple options to access my account`. | **Given** `a login screen`, **when** `a user views the screen`, **then** `they will be able to use GitHub oauth to gain access to the app`. |
+
+## 6. API error responses
+
+Errors use the RFC 9457 Problem Details format (`application/problem+json`). The response
+includes the HTTP status, a short title, a readable detail, and the request path. Validation
+errors may also include the invalid field and a message.
+
+| Code | Meaning | Message |
+|---|---|---|
+| 400 | Malformed request or invalid input | “Request body is missing or malformed.”<br>“A request parameter has an invalid value.”<br>“Request validation failed.” |
+| 401 | Authentication is required or invalid | “Authentication is required to access this resource.” |
+| 403 | User is not allowed to perform the action | “You are not allowed to access this resource.” |
+| 404 | Route or resource was not found | “The requested resource was not found.” |
+| 500 | Unexpected server error | “An unexpected error occurred.” |
 
 ---
 
@@ -60,3 +74,5 @@ test.
 | `10/28` | `#1` | Detekt CI added |
 | `10/28` | `#2` | Android CI added |
 | `10/29` | `#3` | PRD |
+| `11/04` | `—` | Added the API error response contract |
+| `11/04` | `—` | Split the duplicate budget stories into total and category budgets |
