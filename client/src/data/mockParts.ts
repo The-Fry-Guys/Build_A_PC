@@ -1,4 +1,4 @@
-import { Part, CpuDetails, MotherboardDetails } from '../types/build';
+import { Part, CpuDetails, MotherboardDetails } from '@/types/build';
 
 /* This is used for mock data! This file will be changed once the API is up and running! */
 export const MOCK_PARTS: Part[] = [

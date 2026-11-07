@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { MOCK_PARTS } from '../data/mockParts';
-import { Part } from '../types/build';
+import { MOCK_PARTS } from '@/data/mockParts';
+import { Part } from '@/types/build';
 
 export default function PartsCatalog() {
     const [parts, setParts] = useState<Part[]>(MOCK_PARTS);
