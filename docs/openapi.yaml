@@ -124,6 +124,34 @@ components:
         code_verifier:
           type: string
 
+    GitHubAuthRequest:
+      type: object
+      required: [code, codeVerifier, redirectUri]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Single-use authorization code returned by GitHub.
+        codeVerifier:
+          type: string
+          minLength: 43
+          maxLength: 128
+          description: Original PKCE verifier used to generate the S256 challenge.
+        redirectUri:
+          type: string
+          format: uri
+          description: Must exactly match a configured callback and the authorization request.
+          example: http://localhost:8081/auth
+
+    GitHubAuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: API-issued HS256 JWT, valid for one hour by default; never a GitHub access token.
+        user:
+          $ref: '#/components/schemas/User'
     AuthResponse:
       type: object
       properties:
@@ -133,6 +161,24 @@ components:
   responses:
     BadRequest:
       description: The request is malformed or fails validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    AuthConflict:
+      description: Verified email already belongs to another provider. Detail names that provider; no account is created or linked.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: about:blank
+            title: Conflict
+            status: 409
+            detail: This email is already registered with Google. Sign in with Google.
+            instance: /api/v1/auth/github
+    ProviderUnavailable:
+      description: GitHub could not be reached or returned an unusable upstream response. Never include provider tokens or secrets.
       content:
         application/problem+json:
           schema:
@@ -167,21 +213,32 @@ paths:
     post:
       tags: [Auth]
       summary: Exchange GitHub authorization code for API JWT
+      description: >-
+        Public endpoint. Exchange using server-held credentials selected by the exact
+        allowlisted redirect URI. Verify GitHub identity and primary email, then reuse
+        an existing identity or create a user and identity transactionally.
+        Missing or invalid input, rejected code or PKCE verifier, an unapproved redirect,
+        or an unverified primary email returns 400. Failed login persists nothing.
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthRequest'
+              $ref: '#/components/schemas/GitHubAuthRequest'
       responses:
         '200':
           description: Successful authentication
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/GitHubAuthResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/AuthConflict'
+        '502':
+          $ref: '#/components/responses/ProviderUnavailable'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -207,7 +264,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /users/me:
+  /me:
     get:
       tags: [ Users ]
       summary: Get current logged-in user profile
@@ -224,6 +281,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /users/me:
     put:
       tags: [ Users ]
       summary: Update user profile

@@ -1,3 +1,69 @@
+# Database schema
+
+This document reflects the Supabase `public` schema supplied by the team on
+2026-11-09. It is a documentation snapshot, not a live database inspection or an
+executable migration. The supplied SQL export was explicitly marked for context
+only. The diagram's existing tables, columns, types, and relationships match that
+export; the constraints and defaults below provide details the diagram omits.
+
+## Constraints, defaults, and nullable fields
+
+- All 30 tables are in `public`. Every primary key is non-null. The five core
+  tables use UUID `id` keys defaulting to `gen_random_uuid()`; each category detail
+  table uses `part_id` as both its primary key and a foreign key to `catalog_parts`.
+- `users`: `email` is non-null and unique; `display_name` is nullable; `role` is
+  non-null and defaults to `USER`; `created_at` is non-null and defaults to `now()`.
+- `identities`: `user_id`, `provider`, and `provider_user_id` are non-null;
+  `created_at` is non-null and defaults to `now()`. The supplied schema does **not**
+  declare a unique constraint on `(provider, provider_user_id)`.
+- `pc_builds`: `user_id` and `name` are non-null; `created_at` is non-null and
+  defaults to `now()`.
+- `catalog_parts`: `category` and `name` are non-null; `price` is nullable and is
+  unconstrained `numeric` (no declared precision/scale); `created_at` is non-null
+  and defaults to `now()`.
+- `build_parts`: `build_id` and `catalog_part_id` are non-null; `quantity` is
+  non-null, defaults to `1`, and must be greater than zero. There is no declared
+  unique constraint on `(build_id, catalog_part_id)`.
+- Every non-key column in the category detail tables is nullable.
+- `provider` and `role` are plain text without declared value checks. Application
+  values such as `GITHUB`/`GOOGLE` and `USER`/`ADMIN` are not database-enforced enums.
+- All foreign keys in the supplied schema omit `ON DELETE CASCADE` and therefore
+  use PostgreSQL's default `NO ACTION`. Dependent rows can block parent deletion;
+  deletion does not automatically remove identities, builds, selected parts, or
+  category details.
+
+`catalog_parts.category` is restricted to these exact values:
+
+```text
+case-accessory, case-fan, case, cpu-cooler, cpu, external-hard-drive,
+fan-controller, headphones, internal-hard-drive, keyboard, memory, monitor,
+motherboard, mouse, optical-drive, os, power-supply, sound-card, speakers,
+thermal-paste, ups, video-card, webcam, wired-network-card, wireless-network-card
+```
+
+## Implications for GitHub OAuth step 2 (planned, not implemented)
+
+- The hosted `users` and `identities` tables already exist according to this
+  snapshot. Map the API entities and repositories to them rather than running new
+  `CREATE TABLE` statements against Supabase.
+- Before enabling Flyway against the existing database, establish a reviewed
+  baseline; keep fresh local/test schema creation separate from changes to the
+  hosted schema. No baseline or migration is introduced by this documentation update.
+- The authentication appendix requires unique `(provider, provider_user_id)`
+  pairs. Check existing rows for duplicates before planning an additive unique
+  constraint; do not silently drop or merge data.
+- The appendix's identity foreign key uses `ON DELETE CASCADE`; the hosted snapshot
+  does not. Plan that constraint change explicitly. Full account deletion must also
+  handle `pc_builds` and `build_parts`; cascading identities alone is insufficient.
+- Verified-email decisions and transactional user/identity creation remain required
+  application behavior. The schema does not implement these rules on its own.
+- The current Kotlin catalog entity differs from this snapshot: it makes `price`
+  non-null with precision/scale 10,2 and omits `created_at`. The sample endpoint's
+  `CPU` and `Memory` category labels also differ from the lowercase database values.
+  Reconcile these when implementing persisted catalog access, outside OAuth step 2.
+
+## Entity relationship diagram
+
 ```mermaid
 erDiagram
     USERS {
