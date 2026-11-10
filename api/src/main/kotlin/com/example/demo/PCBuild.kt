@@ -4,6 +4,7 @@ import jakarta.persistence.*
 import java.util.UUID
 import java.time.Instant
 
+/* Maps a user's saved PC build to the pc_builds database table. */
 @Entity
 @Table(name = "pc_builds")
 class PCBuild(

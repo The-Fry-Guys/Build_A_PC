@@ -2,15 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Part } from '@/types/build';
 
+/* Displays a list of available PC parts fetched from the API. */
 export default function PartsCatalog() {
     const [parts, setParts] = useState<Part[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    /* Triggers the network request to fetch the catalog data as soon as the component mounts. */
     useEffect(() => {
         fetchParts();
     }, []);
 
+    /* Fetches the paginated parts catalog from the Spring Boot API.
+     * It uses EXPO_PUBLIC_API_URL, complying with the security rule that public variables ship to the client while secrets stay on the server. */
     const fetchParts = async () => {
         try {
             const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
@@ -28,6 +32,7 @@ export default function PartsCatalog() {
         }
     };
 
+    /* Renders an individual part card and the button used to add it to the active build. */
     const renderPartCard = ({ item }: { item: Part }) => (
         <View style = {styles.card}>
             <View style = {styles.cardHeader}>
@@ -42,6 +47,7 @@ export default function PartsCatalog() {
         </View>
     );
 
+    /* Renders a loading indicator while waiting for the initial API response. */
     if (isLoading) {
         return (
             <View style = {[styles.container, styles.centered]}>
@@ -51,6 +57,7 @@ export default function PartsCatalog() {
         );
     }
 
+    /* Displays an error state with a retry option if the backend connection fails. */
     if (error) {
         return (
             <View style = {[styles.container, styles.centered]}>
@@ -62,6 +69,7 @@ export default function PartsCatalog() {
         );
     }
 
+    /* Returns the main catalog layout utilizing a scrollable list suitable for both mobile and web clients. */
     return (
         <View style = {styles.container}>
             <Text style = {styles.title}> PC Parts Catalog </Text>
@@ -75,6 +83,7 @@ export default function PartsCatalog() {
     );
 }
 
+/* Defines the cross-platform styling rules for the parts catalog UI. */
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
     centered: { justifyContent: 'center', alignItems: 'center' },

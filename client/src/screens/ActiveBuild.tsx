@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native
 import { useBuild } from '@/hooks/useBuild';
 import { Part } from '@/types/build';
 
+/* Displays the user's active PC build. */
 export default function ActiveBuild() {
     const {
         selectedParts,
@@ -12,6 +13,7 @@ export default function ActiveBuild() {
         getCompatibility
     } = useBuild();
 
+    /* Retrieves the build's compatibility status whether their current parts are compatible or not, and which part causes incompatability */
     const compatibility = getCompatibility();
     const renderSelectedPart = ({ item }: { item: Part }) => (
         <View style = {styles.card}>
@@ -29,6 +31,7 @@ export default function ActiveBuild() {
         </View>
     );
 
+    /* Renders the builder interface using React Native primitives to ensure the app runs on the web and Android from one codebase. */
     return (
         <View style = {styles.container}>
             <Text style = {styles.title}>{buildName} </Text>
@@ -57,6 +60,7 @@ export default function ActiveBuild() {
     );
 }
 
+/* Defines the cross-platform styling rules for the active build screen. */
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
