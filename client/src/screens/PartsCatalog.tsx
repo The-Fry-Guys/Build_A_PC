@@ -1,10 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { MOCK_PARTS } from '@/data/mockParts';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Part } from '@/types/build';
 
 export default function PartsCatalog() {
-    const [parts, setParts] = useState<Part[]>(MOCK_PARTS);
+    const [parts, setParts] = useState<Part[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchParts();
+    }, []);
+
+    const fetchParts = async () => {
+        try {
+            const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
+            const response = await fetch(`${apiUrl}/api/v1/parts`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            setParts(data.content);
+        } catch (err) {
+            console.error("Failed to fetch parts:", err);
+            setError('Could not load parts catalog. Is the API running?');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const renderPartCard = ({ item }: { item: Part }) => (
         <View style = {styles.card}>
@@ -19,6 +41,26 @@ export default function PartsCatalog() {
             </TouchableOpacity>
         </View>
     );
+
+    if (isLoading) {
+        return (
+            <View style={[styles.container, styles.centered]}>
+                <ActivityIndicator size="large" color="#1976d2" />
+                <Text style={styles.loadingText}>Loading catalog...</Text>
+            </View>
+        );
+    }
+
+    if (error) {
+        return (
+            <View style={[styles.container, styles.centered]}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchParts}>
+                    <Text style={styles.addButtonText}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <View style = {styles.container}>
@@ -35,6 +77,7 @@ export default function PartsCatalog() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
+    centered: { justifyContent: 'center', alignItems: 'center' },
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
     list: { paddingBottom: 24 },
     card: {
@@ -52,5 +95,8 @@ const styles = StyleSheet.create({
     price: { fontSize: 16, fontWeight: 'bold', color: '#2e7d32' },
     name: { fontSize: 18, marginBottom: 16 },
     addButton: { backgroundColor: '#1976d2', padding: 10, borderRadius: 6, alignItems: 'center' },
-    addButtonText: { color: '#ffffff', fontWeight: 'bold' }
+    retryButton: { backgroundColor: '#d32f2f', padding: 10, borderRadius: 6, alignItems: 'center', marginTop: 12 },
+    addButtonText: { color: '#ffffff', fontWeight: 'bold' },
+    loadingText: { marginTop: 12, color: '#666' },
+    errorText: { color: '#d32f2f', fontSize: 16, textAlign: 'center' }
 });
