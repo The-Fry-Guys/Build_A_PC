@@ -10,7 +10,7 @@ import java.time.Instant
 
 @RestController
 @RequestMapping("/api/v1/builds", produces = ["application/json"])
-class PcBuildController(
+class PCBuildController(
     private val buildRepository: PcBuildRepository,
     private val partRepository: CatalogPartRepository
 ) {
@@ -32,7 +32,7 @@ class PcBuildController(
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "ONE OR MORE PARTS NOT FOUND")
         }
 
-        val build = PcBuild(
+        val build = PCBuild(
             userId = userId,
             name = request.name,
             parts = parts.toMutableList()
@@ -71,7 +71,7 @@ data class BuildResponse(
     val createdAt: Instant
 )
 
-private fun PcBuild.toBuildResponse() = BuildResponse(
+private fun PCBuild.toBuildResponse() = BuildResponse(
     id = id,
     name = name,
     parts = parts.map { PartResponse(it.id, it.category, it.name, it.price, it.createdAt) },

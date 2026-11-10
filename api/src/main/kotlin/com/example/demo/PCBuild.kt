@@ -6,7 +6,7 @@ import java.time.Instant
 
 @Entity
 @Table(name = "pc_builds")
-class PcBuild(
+class PCBuild(
     @Id
     val id: UUID = UUID.randomUUID(),
 
