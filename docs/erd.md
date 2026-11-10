@@ -1,10 +1,10 @@
 # Database schema
 
-This document reflects the Supabase `public` schema supplied by the team on
-2026-11-09. It is a documentation snapshot, not a live database inspection or an
-executable migration. The supplied SQL export was explicitly marked for context
-only. The diagram's existing tables, columns, types, and relationships match that
-export; the constraints and defaults below provide details the diagram omits.
+This document reflects the team's latest Supabase `public` schema dump, committed
+as `api/src/main/resources/db/migration/V1__initial_schema.sql`. It supersedes the
+earlier context-only export. This is a description of that snapshot, not a live
+database inspection. The SQL file initializes fresh local/test databases; Flyway
+is not used and the file must not be replayed against the existing hosted schema.
 
 ## Constraints, defaults, and nullable fields
 
@@ -14,23 +14,37 @@ export; the constraints and defaults below provide details the diagram omits.
 - `users`: `email` is non-null and unique; `display_name` is nullable; `role` is
   non-null and defaults to `USER`; `created_at` is non-null and defaults to `now()`.
 - `identities`: `user_id`, `provider`, and `provider_user_id` are non-null;
-  `created_at` is non-null and defaults to `now()`. The supplied schema does **not**
-  declare a unique constraint on `(provider, provider_user_id)`.
+  `created_at` is non-null and defaults to `now()`. The pair
+  `(provider, provider_user_id)` is unique.
 - `pc_builds`: `user_id` and `name` are non-null; `created_at` is non-null and
   defaults to `now()`.
-- `catalog_parts`: `category` and `name` are non-null; `price` is nullable and is
-  unconstrained `numeric` (no declared precision/scale); `created_at` is non-null
-  and defaults to `now()`.
-- `build_parts`: `build_id` and `catalog_part_id` are non-null; `quantity` is
-  non-null, defaults to `1`, and must be greater than zero. There is no declared
-  unique constraint on `(build_id, catalog_part_id)`.
+- `catalog_parts`: `category` and `name` are non-null; `price` is nullable
+  `numeric(10,2)`; `created_at` is non-null and defaults to `now()`.
+- `build_parts`: `build_id` and `catalog_part_id` are non-null and their pair is
+  unique; `quantity` is non-null, defaults to `1`, and must be greater than zero.
 - Every non-key column in the category detail tables is nullable.
+  `memory_details.price_per_gb` and `internal_hard_drive_details.price_per_gb`
+  use `numeric(10,3)`; other detail-table numeric fields have no declared precision.
 - `provider` and `role` are plain text without declared value checks. Application
   values such as `GITHUB`/`GOOGLE` and `USER`/`ADMIN` are not database-enforced enums.
-- All foreign keys in the supplied schema omit `ON DELETE CASCADE` and therefore
-  use PostgreSQL's default `NO ACTION`. Dependent rows can block parent deletion;
-  deletion does not automatically remove identities, builds, selected parts, or
-  category details.
+- Row-level security is enabled on all 30 tables; the dump defines no policies.
+  Table owners normally bypass RLS. A restricted API database role needs an
+  appropriate access policy; RLS does not replace API authorization checks.
+
+### Foreign-key deletion behavior
+
+- Deleting a user cascades to their identities and PC builds; deleting a build
+  cascades to its selected `build_parts`. Account deletion endpoints are not yet
+  implemented.
+- Deleting a catalog part cascades to its `case_details`, `cpu_cooler_details`,
+  `cpu_details`, `internal_hard_drive_details`, `memory_details`,
+  `motherboard_details`, `power_supply_details`, and `video_card_details` rows.
+- All remaining foreign keys use the default `NO ACTION`. In particular, build
+  selections and the other category detail rows can block catalog-part deletion.
+
+There are explicit indexes on `build_parts.build_id`,
+`build_parts.catalog_part_id`, `catalog_parts.category`, and `pc_builds.user_id`,
+in addition to indexes backing primary keys and unique constraints.
 
 `catalog_parts.category` is restricted to these exact values:
 
@@ -41,26 +55,22 @@ motherboard, mouse, optical-drive, os, power-supply, sound-card, speakers,
 thermal-paste, ups, video-card, webcam, wired-network-card, wireless-network-card
 ```
 
-## Implications for GitHub OAuth step 2 (planned, not implemented)
+## GitHub OAuth persistence mapping
 
-- The hosted `users` and `identities` tables already exist according to this
-  snapshot. Map the API entities and repositories to them rather than running new
-  `CREATE TABLE` statements against Supabase.
-- Before enabling Flyway against the existing database, establish a reviewed
-  baseline; keep fresh local/test schema creation separate from changes to the
-  hosted schema. No baseline or migration is introduced by this documentation update.
-- The authentication appendix requires unique `(provider, provider_user_id)`
-  pairs. Check existing rows for duplicates before planning an additive unique
-  constraint; do not silently drop or merge data.
-- The appendix's identity foreign key uses `ON DELETE CASCADE`; the hosted snapshot
-  does not. Plan that constraint change explicitly. Full account deletion must also
-  handle `pc_builds` and `build_parts`; cascading identities alone is insufficient.
-- Verified-email decisions and transactional user/identity creation remain required
-  application behavior. The schema does not implement these rules on its own.
-- The current Kotlin catalog entity differs from this snapshot: it makes `price`
-  non-null with precision/scale 10,2 and omits `created_at`. The sample endpoint's
-  `CPU` and `Memory` category labels also differ from the lowercase database values.
-  Reconcile these when implementing persisted catalog access, outside OAuth step 2.
+- `User` and `Identity` map the existing `public` tables; repositories provide
+  email lookup, provider identity lookup (with its user), and identities by user ID.
+- Application inserts generate UUIDs through JPA and supply creation timestamps;
+  new users default to `USER`. Database defaults remain available for SQL inserts
+  that omit those columns. IDs are null until JPA persists the entities.
+- The identity's user association is lazy by default and has no JPA removal cascade
+  toward the user. Deletion from user to identities is enforced by the database.
+- Existing identity uniqueness and deletion constraints meet the auth appendix;
+  no schema changes are needed for these mappings.
+- Verified-email decisions, transactional account creation, OAuth exchange, JWTs,
+  and endpoints remain later work. The entities alone do not implement those rules.
+- The current Kotlin catalog entity still makes `price` non-null and omits
+  `created_at`. Sample endpoint categories `CPU` and `Memory` differ from lowercase
+  database values. Persisted catalog access remains outside this account chunk.
 
 ## Entity relationship diagram
 
