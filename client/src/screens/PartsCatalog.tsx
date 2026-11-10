@@ -44,19 +44,19 @@ export default function PartsCatalog() {
 
     if (isLoading) {
         return (
-            <View style={[styles.container, styles.centered]}>
-                <ActivityIndicator size="large" color="#1976d2" />
-                <Text style={styles.loadingText}>Loading catalog...</Text>
+            <View style = {[styles.container, styles.centered]}>
+                <ActivityIndicator size ="large" color="#1976d2" />
+                <Text style = {styles.loadingText}> Loading catalog... </Text>
             </View>
         );
     }
 
     if (error) {
         return (
-            <View style={[styles.container, styles.centered]}>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={fetchParts}>
-                    <Text style={styles.addButtonText}>Retry</Text>
+            <View style = {[styles.container, styles.centered]}>
+                <Text style = {styles.errorText}>{error} </Text>
+                <TouchableOpacity style = {styles.retryButton} onPress = {fetchParts}>
+                    <Text style = {styles.addButtonText}> Retry </Text>
                 </TouchableOpacity>
             </View>
         );
