@@ -8,6 +8,7 @@ import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.ErrorResponseException
+import org.springframework.web.ErrorResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -46,30 +47,26 @@ class ApiExceptionHandler {
     fun handleUnreadableRequest(request: HttpServletRequest): ResponseEntity<ProblemDetail> =
         response(problemDetail(HttpStatus.BAD_REQUEST, "Request body is missing or malformed.", request))
 
+    /** Preserves status codes, headers, and Problem Details from framework exceptions. */
     @ExceptionHandler(ErrorResponseException::class)
     fun handleFrameworkError(
         exception: ErrorResponseException,
         request: HttpServletRequest,
-    ): ResponseEntity<ProblemDetail> {
-        val problem = exception.body
-        if (problem.instance == null) {
-            problem.instance = URI.create(request.requestURI)
-        }
-        return ResponseEntity
-            .status(exception.statusCode)
-            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-            .body(problem)
-    }
+    ): ResponseEntity<ProblemDetail> = frameworkResponse(exception, request)
 
     @ExceptionHandler(NoResourceFoundException::class)
     fun handleMissingRoute(request: HttpServletRequest): ResponseEntity<ProblemDetail> =
         response(problemDetail(HttpStatus.NOT_FOUND, "The requested resource was not found.", request))
 
+    /** Preserves other framework HTTP errors and sanitizes unexpected server failures. */
     @ExceptionHandler(Exception::class)
     fun handleUnexpected(
         exception: Exception,
         request: HttpServletRequest,
     ): ResponseEntity<ProblemDetail> {
+        if (exception is ErrorResponse) {
+            return frameworkResponse(exception, request)
+        }
         logger.error("Unhandled API error for {}", request.requestURI, exception)
         return response(
             problemDetail(
@@ -78,6 +75,22 @@ class ApiExceptionHandler {
                 request,
             ),
         )
+    }
+
+    /** Builds a Problem Details response while retaining headers such as Allow. */
+    private fun frameworkResponse(
+        exception: ErrorResponse,
+        request: HttpServletRequest,
+    ): ResponseEntity<ProblemDetail> {
+        val problem = exception.body
+        problem.type = problem.type ?: URI.create("about:blank")
+        if (problem.instance == null) {
+            problem.instance = URI.create(request.requestURI)
+        }
+        return ResponseEntity.status(exception.statusCode)
+            .headers(exception.headers)
+            .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+            .body(problem)
     }
 
     private fun response(problem: ProblemDetail): ResponseEntity<ProblemDetail> =
