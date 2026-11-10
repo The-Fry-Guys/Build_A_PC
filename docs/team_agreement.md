@@ -5,8 +5,8 @@
 The course deadline is the outer limit: PR open by **2:00 AM Thursday**, reviewed and merged by
 **10:00 AM Thursday**. Our own deadline is earlier:
 
-- **Our PRs are open by:** `Tuesday 5:00 AM`
-- **Why that time works for us:** `We want enough time to reivew the PRs and make changes before a PR report is due.`
+- **Our PRs are open by:** `Wednesday 5:00 AM`
+- **Why that time works for us:** `We want enough time to reivew the PRs and make changes before a PR report is due. Edit: We found that Tuesday at 5:00 AM was too little time for us to finish everything we wanted to.`
 
 ## Reviews
 
