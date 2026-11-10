@@ -50,6 +50,10 @@ test.
 | PRD-12 | As a `user`, I want to `set budget limits for part categories` so that `I can control how much I spend on each type of component`. | **Given** `a build with a total budget`, **when** `the user assigns budgets to part categories`, **then** `the category limits cannot exceed the remaining total budget`. |
 | PRD-13 | As a `user`, I want to `be able to share a pc (any progress) with other users via link` so that `I can build PCs for friends and or family and change the build based on input` | Given `a logged in user`, when `a user goes to their selected pc screen`, then `a share build button will be available to select, which will copy a link to their clipboard that will allow other users to view a copy of that build` |
 | PRD-14 | As a `user`, I want to `login with GitHub` so that `I have multiple options to access my account`. | **Given** `a login screen`, **when** `a user views the screen`, **then** `they will be able to use GitHub oauth to gain access to the app`. |
+| PRD-15 | As an `Admin`, I want to `delete users in case they are not active on the site, and edit users so that their information and profile is suitable to the app's standards.` | Given `an admin`, when an `admin logs in, and gets into settings, they could search through users. They could either delete, or edit a user`. |
+| PRD-16 | As a `user`, I want to `critique and rate other people's PC builds, so that I could give vital information and suggestions to bland or horrid builds`. | Given an `user`, when a `user logs into the website, and finds a build that a friend has, they could comment on the build and rate it on a scale of 1/10`. |
+| PRD-17 | As a `user`, I want to `filter parts out by category so that I could find the necessary object for a build`. | Given a `user`, when a `user logs in, they can filter through the search and pull a part from the database`. |
+| PRD-18 | As an `admin`, I want the `app/website to function properly, so I expect to see >70% test coverage when I check the code`. | Given an `admin`, when a `admin checks the codebase, they should see >70% test coverage`. |
 
 ## 6. API error responses
 
