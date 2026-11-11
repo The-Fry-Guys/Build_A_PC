@@ -19,3 +19,4 @@ client/test-results/
 .externalNativeBuild
 .cxx
 local.properties
+.env

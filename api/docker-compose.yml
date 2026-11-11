@@ -1,4 +1,4 @@
-# Run from the api folder: docker compose up --build
+# Run from the api folder: docker compose --env-file ../.env up --build
 #
 # Still needed:
 # TODO: move credentials to a .env file / secrets manager (change-me is a placeholder)
@@ -29,8 +29,8 @@ services:
       - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
-      SPRING_DATASOURCE_USERNAME: buildapc
-      SPRING_DATASOURCE_PASSWORD: change-me
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:?required}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?required}
       # The SQL initialization script owns schema creation on fresh volumes.
       SPRING_JPA_HIBERNATE_DDL_AUTO: none
     depends_on:
@@ -41,8 +41,8 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: buildapc
-      POSTGRES_USER: buildapc
-      POSTGRES_PASSWORD: change-me
+      POSTGRES_USER: ${DB_USER:?required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?required}
     ports:
       - "5432:5432"
     volumes:
