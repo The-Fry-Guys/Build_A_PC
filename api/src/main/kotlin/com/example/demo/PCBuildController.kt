@@ -14,7 +14,7 @@ import java.time.Instant
 @RestController
 @RequestMapping("/api/v1/builds", produces = ["application/json"])
 class PCBuildController(
-    private val buildRepository: PcBuildRepository,
+    private val buildRepository: PCBuildRepository,
     private val partRepository: CatalogPartRepository
 ) {
     /* Returns all builds belonging to the currently authenticated user. */
