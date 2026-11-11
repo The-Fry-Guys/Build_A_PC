@@ -58,6 +58,34 @@ class ApiExceptionHandler {
     fun handleMissingRoute(request: HttpServletRequest): ResponseEntity<ProblemDetail> =
         response(problemDetail(HttpStatus.NOT_FOUND, "The requested resource was not found.", request))
 
+    /** Rejects registration with an unverified provider email. */
+    @ExceptionHandler(EmailNotVerifiedException::class)
+    fun handleUnverifiedEmail(
+        exception: EmailNotVerifiedException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ProblemDetail> =
+        response(
+            problemDetail(
+                HttpStatus.BAD_REQUEST,
+                exception.message ?: "Verify your email at the provider.",
+                request,
+            ),
+        )
+
+    /** Directs the user to the provider already associated with their email. */
+    @ExceptionHandler(ProviderConflictException::class)
+    fun handleProviderConflict(
+        exception: ProviderConflictException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ProblemDetail> =
+        response(
+            problemDetail(
+                HttpStatus.CONFLICT,
+                exception.message ?: "Sign in with your existing provider.",
+                request,
+            ),
+        )
+
     /** Preserves other framework HTTP errors and sanitizes unexpected server failures. */
     @ExceptionHandler(Exception::class)
     fun handleUnexpected(

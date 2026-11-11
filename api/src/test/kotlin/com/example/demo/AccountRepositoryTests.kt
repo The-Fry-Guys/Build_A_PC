@@ -5,7 +5,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -13,16 +15,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Exercises account mappings and constraints in the manually initialized local Postgres. */
-@SpringBootTest(
-    properties = [
-        "spring.datasource.url=jdbc:postgresql://localhost:5433/buildapc_test",
-        "spring.datasource.username=buildapc",
-        "spring.datasource.password=local-test-only",
-        "spring.jpa.hibernate.ddl-auto=none",
-        "spring.sql.init.mode=never",
-    ],
-)
+/** Exercises account mappings and constraints in the disposable Testcontainers Postgres. */
+@SpringBootTest
+@ActiveProfiles("test")
+@Import(PostgresTestConfiguration::class)
 @Transactional
 class AccountRepositoryTests {
     @Autowired

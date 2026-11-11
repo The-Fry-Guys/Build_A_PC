@@ -7,6 +7,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
 import org.springframework.context.annotation.Import
 import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -17,6 +18,9 @@ import org.springframework.test.web.servlet.get
 class HealthFailureTests @Autowired constructor(private val mvc: MockMvc) {
     @MockitoBean
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @MockitoBean
+    private lateinit var jwtDecoder: JwtDecoder
 
     /** Verifies that a database outage returns HTTP 503 with DOWN readiness fields. */
     @Test

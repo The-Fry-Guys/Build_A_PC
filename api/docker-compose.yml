@@ -2,10 +2,7 @@
 #
 # Still needed:
 # TODO: move credentials to a .env file / secrets manager (change-me is a placeholder)
-# TODO: replace ddl-auto=update with Flyway or Liquibase migrations
-# TODO: add entities/endpoints (the database is currently unused)
 # TODO: lock down SecurityConfig (currently permits all requests, CSRF disabled)
-# TODO: remove spring-boot-h2console / H2 from build.gradle once on Postgres
 # TODO: add application-prod.properties and a prod compose file (don't expose 5432 in prod)
 # TODO: React Native app must call http://<computer-LAN-IP>:8080 on a physical device, not localhost
 services:
@@ -17,8 +14,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
       SPRING_DATASOURCE_USERNAME: buildapc
       SPRING_DATASOURCE_PASSWORD: change-me
-      # Dev only: let Hibernate create/update tables until migrations exist
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      # The SQL initialization script owns schema creation on fresh volumes.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
     depends_on:
       db:
         condition: service_healthy
@@ -33,6 +30,7 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./src/main/resources/db/migration/V1__initial_schema.sql:/docker-entrypoint-initdb.d/001-initial-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U buildapc -d buildapc"]
       interval: 5s
