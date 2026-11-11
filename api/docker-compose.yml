@@ -28,11 +28,11 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
-      SPRING_DATASOURCE_USERNAME: buildapc
-      SPRING_DATASOURCE_PASSWORD: change-me
+        SPRING_DATASOURCE_URL: jdbc:postgresql://${DB_HOST:?required}:${DB_PORT:?required}/${DATABASE:?required}
+        SPRING_DATASOURCE_USERNAME: ${DB_USER:?required}
+        SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?required}
       # Dev only: let Hibernate create/update tables until migrations exist
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+        SPRING_JPA_HIBERNATE_DDL_AUTO: none
     depends_on:
       db:
         condition: service_healthy
