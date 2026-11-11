@@ -1,7 +1,7 @@
 /** Tests client logic without starting Expo or contacting external services. */
 module.exports = {
   preset: 'jest-expo',
-  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
+  testMatch: ['**/src/**/*.test.ts', '**/src/**/*.test.tsx'],
   clearMocks: true,
   collectCoverageFrom: [
     'src/lib/api.ts',
@@ -10,6 +10,8 @@ module.exports = {
     'src/lib/github-flow.ts',
     'src/admin/use-admin-directory.ts',
     'src/admin/query-provider.tsx',
+    'src/hooks/useBuild.ts',
+    'src/utils/compatibility.ts',
   ],
   coverageThreshold: {
     global: {
