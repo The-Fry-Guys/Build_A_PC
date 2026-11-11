@@ -9,6 +9,20 @@
 # TODO: add application-prod.properties and a prod compose file (don't expose 5432 in prod)
 # TODO: React Native app must call http://<computer-LAN-IP>:8080 on a physical device, not localhost
 services:
+  expo:
+    build:
+      context: ../client
+    ports:
+      - "8081:8081"
+    environment:
+      EXPO_PACKAGER_PROXY_URL: ${EXPO_PACKAGER_PROXY_URL:-http://localhost:8081}
+    volumes:
+      - ../client/src:/app/src
+      - ../client/assets:/app/assets
+      - ../client/app.json:/app/app.json
+    stdin_open: true
+    tty: true
+
   api:
     build: .
     ports:
