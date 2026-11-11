@@ -3,6 +3,14 @@ Project 3 for CST438 Software Engineering
 
 ## How to Setup Expo for development
 
+- Install Node.js **22.13+ within 22.x**, npm, and **Java 21**.
+- Windows: use Git Bash for `load_env.sh`; use your Windows Android SDK.
+- From `client/`, install dependencies once (and after lockfile changes):
+
+  ```bash
+  npm ci
+  ```
+
 - In Android Studio SDK Manager
   - Install Android SDK Platform 36 (Android 16)
   - Install SDK Build-Tools
@@ -11,7 +19,7 @@ Project 3 for CST438 Software Engineering
   - (note that many of these may already be installed)
 
 - In Android Studio Device Manager
-  - Create a newer Pixel Device (I am using Pixel 9)
+  - Create a Pixel 9 virtual device named exactly **`Pixel_9`**
   - Start the emulator (not connected to any app)
 
 - From /client, run:
@@ -22,13 +30,16 @@ adb devices
 npx expo run:android
 ```
 (note that adb devices may not work first try, contact Austin for help if you have issues)
-(i had to add 
+Find your SDK path in Android Studio → SDK Manager → **Android SDK Location**.
+On Linux/macOS, add this to your shell configuration, using that actual path:
+
 ```bash
-export ANDROID_HOME="$HOME/Library/Android/sdk"
+export ANDROID_HOME="/your/Android/sdk"
 export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator"
 ```
-to ~/.zshrc or create (~/.config/zsh/conf.d/android-sdk.zsh and add it there)
-)
+
+On Windows, set `ANDROID_HOME` and add its `platform-tools` and `emulator`
+directories to your user `Path`. Restart the terminal after changing these.
 
 2. run:
 ```bash
@@ -37,11 +48,40 @@ npx expo start --web
 
 3. Using npx expo start will work once the other two have been run once
 
+### Standalone APK testing (Pixel 9)
+
+Complete the Android SDK setup above and configure the root `.env` and
+`client/.env` with your database, JWT, and GitHub OAuth settings first.
+Each teammate runs the API on their own computer; Docker is not needed for this
+build when using the team's hosted Supabase database.
+
+1. Start **Pixel_9** in Android Studio → Device Manager.
+2. In a terminal opened in `api/`, start the backend and leave it running:
+
+   ```bash
+   bash load_env.sh
+   ```
+
+3. In another terminal opened in `client/`, build, install, and open the app:
+
+   ```bash
+   npm run android:emulator:apk
+   ```
+
+4. Wait for the app to open, then test GitHub sign-in, restarting the app, and
+   logout. This standalone build does **not** need Metro running.
+
+The command targets Pixel_9 and permits local HTTP only to the emulator's host
+address, `10.0.2.2`. It restores normal generated network settings afterward.
+The APK is saved at `client/android/app/build/outputs/apk/release/app-release.apk`.
+Rebuild with this command after code changes; this setup is for emulator testing,
+not production or physical phones.
+
 ## How to Setup Spring Boot for development
 
 - From /api
-  - Use Java 21 and supply `DB_USER` and `DB_PASSWORD` through your shell or deployment secrets.
-  - Run `./gradlew bootRun`.
+  - Use Java 21 and configure the root `.env` with database, JWT, and OAuth settings.
+  - Run `bash load_env.sh` to load the environment and start the API.
   - Run `curl -i http://localhost:8080/api/v1/` for API information.
   - Run `curl -i http://localhost:8080/api/v1/health` for database readiness (200 UP or 503 DOWN).
   - Run `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` for a page of database parts.
@@ -73,13 +113,11 @@ connection check reuses the read-only transaction's connection. These limits app
 per application context, so multiple running instances still share Supabase's total
 session capacity. Restart existing API processes to apply the new settings.
 
-From `/api`, run `./gradlew test`. Catalog and HTTP contract tests use an isolated H2
-database in PostgreSQL mode and require no Supabase credentials.
-`AccountRepositoryTests` instead requires the separately initialized local PostgreSQL
-database at `localhost:5433/buildapc_test` (user `buildapc`, password `local-test-only`);
-it tests the committed SQL schema and rolls back its writes. Run only those tests with
+From `api/`, run `./gradlew test` with Docker running. Database-backed tests use
+disposable PostgreSQL 16 Testcontainers initialized from the committed SQL schema;
+no Supabase credentials or manually initialized test database are required.
+Run account repository tests alone with
 `./gradlew test --tests com.example.demo.AccountRepositoryTests`.
-The HTTP tests exercise the actual controllers and JPA queries. They also verify that a database outage returns 503 without connection details.
 
 To verify the actual Supabase connection, supply `DB_USER` and `DB_PASSWORD` through
 your existing secret mechanism and run `./gradlew supabaseTest`. This separate,
@@ -87,27 +125,25 @@ explicitly invoked task verifies the PostgreSQL driver, Supabase hostname, conne
 validity, `SELECT 1`, and a bounded catalog repository query. It uses read-only
 transactions, disables schema changes and SQL initialization, and works with an empty
 catalog. It fails if credentials, network access, or the expected schema are unavailable.
-No test sources an environment file. Passing the H2 tests alone does not prove that
+No test sources an environment file. Passing the isolated tests alone does not prove that
 the remote Supabase connection works.
 
-## GitHub OAuth configuration (step 1)
+## GitHub OAuth configuration
 
 The auth contract is in `docs/openapi.yaml`: `POST /api/v1/auth/github` accepts
 `{ code, codeVerifier, redirectUri }` and returns `{ token, user }`;
-`GET /api/v1/me` requires our API-issued Bearer JWT. These endpoints are planned,
-not implemented yet. Database persistence, JWT validation, CORS enforcement, and
-login screens will be added in later steps.
+`GET /api/v1/me` requires our API-issued Bearer JWT. GitHub login, account
+persistence, JWT validation, CORS, session restoration, and logout are implemented
+for Expo web and Android.
 
 1. Copy the root `.env.example` to `.env`, and `client/.env.example` to `client/.env`.
    Both local files are ignored by Git. Fill in your database settings; the root
    template uses local Postgres, while `DB_URL` can also point to Supabase.
-2. Register two GitHub **OAuth Apps** under GitHub Settings → Developer settings →
-   OAuth Apps. Use homepage `http://localhost:8081` for local development. Register
+2. Reuse the team's web and Android GitHub **OAuth Apps**; teammates do not need
+   separate registrations. For a new setup, register two apps under GitHub Settings
+   → Developer settings → OAuth Apps. Register
    callback `http://localhost:8081/auth` for the web app and `client://auth` for the
    Expo Android app. Keep the existing Expo scheme `client` in `client/app.json`.
-   Separate registrations accommodate GitHub's single-callback restriction documented
-   at https://docs.expo.dev/guides/authentication/#github (the course appendix says
-   multiple callbacks are supported).
 3. Put each registration's client ID and secret in the corresponding root
    `GITHUB_WEB_*` or `GITHUB_ANDROID_*` variables. Copy only the client IDs into
    the matching `EXPO_PUBLIC_GITHUB_*` variables in `client/.env`.
@@ -122,8 +158,8 @@ From `api/`, `bash load_env.sh` loads the root `.env` before starting Spring Boo
 Expo loads `client/.env` when started from `client/`. Docker Compose keeps its
 existing local database configuration; it does not yet pass the new OAuth settings.
 
-The configured web and Android redirect URIs define the future exact allowlist:
-the API will select the matching server-owned credentials and reject other URIs.
+The configured web and Android redirect URIs define the exact allowlist:
+the API selects the matching server-owned credentials and rejects other URIs.
 The browser origin allowlist defaults to `http://localhost:8081` via
 `APP_CORS_ORIGINS`; native callbacks are not browser CORS origins. Production will
 need separate callback registrations/configuration and an explicit HTTPS origin.

@@ -6,6 +6,7 @@ module.exports = {
   collectCoverageFrom: [
     'src/lib/api.ts',
     'src/lib/tokenStore.web.ts',
+    'src/lib/tokenStore.ts',
     'src/lib/session.ts',
     'src/lib/github-flow.ts',
   ],
