@@ -1,5 +1,8 @@
 # Build A PC Architecture
 
+Target architecture, including planned Google and build/compatibility features.
+See [the implemented GitHub OAuth sequence](auth-sequence.md) for current sign-in.
+
 ```mermaid
 flowchart LR
     User --> App["Expo app \nWeb and Android"]

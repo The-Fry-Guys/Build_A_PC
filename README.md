@@ -87,6 +87,15 @@ not production or physical phones.
   - Run `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` for a page of database parts.
   - Run `curl -i http://localhost:8080/api/v1/parts/{id}` for one part by UUID.
 
+With the root `.env` configured, run `docker compose up --build` from `api/` to
+start the API and local Postgres. Compose supplies JWT/OAuth settings from `.env`
+and overrides database settings to use its container. For an image-only build,
+run `docker build -f api/Dockerfile .` from the repository root.
+
+API docs: [Swagger UI](http://localhost:8080/swagger-ui/index.html) displays the
+handwritten contract at `/openapi.yaml`; SpringDoc's generated implemented routes
+are at `/v3/api-docs`. See [the OAuth sequence](docs/auth-sequence.md).
+
 The datasource uses the Supabase PostgreSQL pooler configured in
 `api/src/main/resources/application.properties`. For this shared session pooler,
 `DB_USER` must include the project reference (typically `postgres.<project-ref>`).
@@ -116,6 +125,9 @@ session capacity. Restart existing API processes to apply the new settings.
 From `api/`, run `./gradlew test` with Docker running. Database-backed tests use
 disposable PostgreSQL 16 Testcontainers initialized from the committed SQL schema;
 no Supabase credentials or manually initialized test database are required.
+`ApiHttpIntegrationTests` uses REST Assured against a real test server and that
+Postgres database, covering login, JWTs, 400/401/403/404/409, and documentation.
+Only GitHub's external identity client is mocked; no real login is needed.
 Run account repository tests alone with
 `./gradlew test --tests com.example.demo.AccountRepositoryTests`.
 
@@ -155,8 +167,8 @@ for Expo web and Android.
    reachable LAN address. Web uses `http://localhost:8080/api/v1`.
 
 From `api/`, `bash load_env.sh` loads the root `.env` before starting Spring Boot.
-Expo loads `client/.env` when started from `client/`. Docker Compose keeps its
-existing local database configuration; it does not yet pass the new OAuth settings.
+Expo loads `client/.env` when started from `client/`. Docker Compose loads the root
+`.env` into the API container while retaining its local database overrides.
 
 The configured web and Android redirect URIs define the exact allowlist:
 the API selects the matching server-owned credentials and rejects other URIs.

@@ -67,6 +67,8 @@ class SecurityConfig {
                     "/api/v1/health",
                     "/actuator/health",
                     "/v3/api-docs/**",
+                    "/openapi.yaml",
+                    "/swagger-ui.html",
                     "/swagger-ui/**",
                 ).permitAll()
 

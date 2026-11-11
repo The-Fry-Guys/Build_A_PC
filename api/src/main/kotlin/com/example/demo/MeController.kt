@@ -1,5 +1,7 @@
 package com.example.demo
 
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.security.SecurityRequirement
 import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -14,6 +16,7 @@ import java.util.UUID
 
 /** Returns the application account identified by a validated app JWT. */
 @RestController
+@SecurityRequirement(name = "bearerAuth")
 @RequestMapping(
     "/api/v1/me",
     produces = [MediaType.APPLICATION_JSON_VALUE],
@@ -24,6 +27,7 @@ class MeController(
     /** Loads current profile data rather than trusting copied profile claims. */
     @GetMapping
     fun me(
+        @Parameter(hidden = true)
         @AuthenticationPrincipal jwt: Jwt,
     ): ResponseEntity<AuthUserResponse> {
         val subject = jwt.subject ?: throw unavailableAccount()

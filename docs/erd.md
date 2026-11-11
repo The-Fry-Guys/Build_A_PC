@@ -66,11 +66,14 @@ thermal-paste, ups, video-card, webcam, wired-network-card, wireless-network-car
   toward the user. Deletion from user to identities is enforced by the database.
 - Existing identity uniqueness and deletion constraints meet the auth appendix;
   no schema changes are needed for these mappings.
-- Verified-email decisions, transactional account creation, OAuth exchange, JWTs,
-  and endpoints remain later work. The entities alone do not implement those rules.
-- The current Kotlin catalog entity still makes `price` non-null and omits
-  `created_at`. Sample endpoint categories `CPU` and `Memory` differ from lowercase
-  database values. Persisted catalog access remains outside this account chunk.
+- GitHub identity/email verification, transactional account creation, app JWTs,
+  and `/api/v1/auth/github` and `/api/v1/me` are implemented. Existing identities
+  reuse their user; conflicting verified emails return 409 without account linking.
+- Catalog persistence maps nullable `price`, includes `created_at`, and uses the
+  lowercase category values listed above. Local/test databases use the committed
+  schema; production remains hosted in Supabase.
+
+See [the GitHub OAuth sequence](auth-sequence.md) for the implemented sign-in flow.
 
 ## Entity relationship diagram
 
