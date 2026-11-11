@@ -13,6 +13,7 @@ import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -28,6 +29,9 @@ class ApiErrorContractTests @Autowired constructor(private val mvc: MockMvc) {
 
     @MockitoBean
     private lateinit var jdbcTemplate: JdbcTemplate
+
+    @MockitoBean
+    private lateinit var jwtDecoder: JwtDecoder
 
     /** Verifies that a catalog query failure returns sanitized HTTP 500 Problem Details. */
     @Test

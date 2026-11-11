@@ -24,6 +24,8 @@ import kotlin.test.assertTrue
     "spring.sql.init.mode=never",
     "spring.datasource.hikari.maximum-pool-size=1",
     "spring.datasource.hikari.minimum-idle=0",
+    // Public test fixture; this read-only test does not issue application tokens.
+    "app.jwt.secret-base64=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
 ])
 @AutoConfigureMockMvc
 @Transactional(readOnly = true)

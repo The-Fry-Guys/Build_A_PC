@@ -3,7 +3,9 @@ info:
   title: Build A PC API
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
-    Currently implemented operations are GET /, GET /actuator/health, GET /parts, and GET /parts/{id}.
+    Implemented operations include GET /, GET /actuator/health, POST /auth/github,
+    GET /me, GET /parts, and GET /parts/{id}. The PRD-6 contract adds GET /admin/users
+    and optional catalog search.
     Other operations describe the planned API contract.
     Versioned API responses use application/json and errors use application/problem+json.
     Database readiness is exposed by Spring Boot Actuator at /actuator/health using
@@ -95,6 +97,7 @@ components:
 
     User:
       type: object
+      required: [id, email, display_name, role, created_at]
       properties:
         id:
           type: string
@@ -104,6 +107,7 @@ components:
           format: email
         display_name:
           type: string
+          nullable: true
         role:
           type: string
           enum: [ USER, ADMIN ]
@@ -194,19 +198,6 @@ components:
               message:
                 type: string
 
-    GitHubAuthRequest:
-      type: object
-      required: [code, code_verifier, redirect_uri]
-      properties:
-        code:
-          type: string
-        code_verifier:
-          type: string
-        redirect_uri:
-          type: string
-          format: uri
-          description: The same redirect URI used in the authorization request.
-
     GoogleAuthRequest:
       oneOf:
         - type: object
@@ -227,6 +218,34 @@ components:
               type: string
               description: Google ID token from native Google Sign-In.
 
+    GitHubAuthRequest:
+      type: object
+      required: [code, codeVerifier, redirectUri]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Single-use authorization code returned by GitHub.
+        codeVerifier:
+          type: string
+          minLength: 43
+          maxLength: 128
+          description: Original PKCE verifier used to generate the S256 challenge.
+        redirectUri:
+          type: string
+          format: uri
+          description: Must exactly match a configured callback and the authorization request.
+          example: http://localhost:8081/auth
+
+    GitHubAuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: API-issued HS256 JWT, valid for one hour by default; never a GitHub access token.
+        user:
+          $ref: '#/components/schemas/User'
     AuthResponse:
       type: object
       properties:
@@ -234,6 +253,16 @@ components:
           type: string
           description: Short-lived JWT.
   parameters:
+    Search:
+      name: q
+      in: query
+      required: false
+      description: >-
+        Trimmed, case-insensitive substring search. Percent and underscore are literal
+        characters. Blank or omitted values list all records. A valid UUID also matches
+        an exact record ID. User lists search email/display_name; parts search name/category.
+      schema:
+        type: string
     Page:
       name: page
       in: query
@@ -256,6 +285,24 @@ components:
   responses:
     BadRequest:
       description: The request is malformed or fails validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    AuthConflict:
+      description: Verified email already belongs to another provider. Detail names that provider; no account is created or linked.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+          example:
+            type: about:blank
+            title: Conflict
+            status: 409
+            detail: This email is already registered with Google. Sign in with Google.
+            instance: /api/v1/auth/github
+    ProviderUnavailable:
+      description: GitHub could not be reached or returned an unusable upstream response. Never include provider tokens or secrets.
       content:
         application/problem+json:
           schema:
@@ -349,23 +396,32 @@ paths:
     post:
       tags: [Auth]
       summary: Exchange GitHub authorization code for API JWT
+      description: >-
+        Public endpoint. Exchange using server-held credentials selected by the exact
+        allowlisted redirect URI. Verify GitHub identity and primary email, then reuse
+        an existing identity or create a user and identity transactionally.
+        Missing or invalid input, rejected code or PKCE verifier, an unapproved redirect,
+        or an unverified primary email returns 400. Failed login persists nothing.
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/GitHubAuthRequest'
+              $ref: '#/components/schemas/GitHubAuthRequest'
       responses:
         '200':
           description: Successful authentication
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/GitHubAuthResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '409':
-          $ref: '#/components/responses/Conflict'
+          $ref: '#/components/responses/AuthConflict'
+        '502':
+          $ref: '#/components/responses/ProviderUnavailable'
         '500':
           $ref: '#/components/responses/InternalServerError'
 
@@ -379,7 +435,7 @@ paths:
         content:
           application/json:
             schema:
-                $ref: '#/components/schemas/GoogleAuthRequest'
+              $ref: '#/components/schemas/GoogleAuthRequest'
       responses:
         '200':
           description: Successful authentication
@@ -394,7 +450,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /users/me:
+  /me:
     get:
       tags: [ Users ]
       summary: Get current logged-in user profile
@@ -411,6 +467,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /users/me:
     put:
       tags: [ Users ]
       summary: Update user profile
@@ -442,8 +499,9 @@ paths:
     get:
       tags: [ Parts ]
       summary: Get list of general PC parts
-      description: Queries the catalog database, ordered by unique part ID for consistent pagination.
+      description: Public database search over part name/category, ordered by ID for consistent pagination.
       parameters:
+        - $ref: '#/components/parameters/Search'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -648,7 +706,12 @@ paths:
     get:
       tags: [ Admin ]
       summary: View and search user data
+      description: >-
+        Requires a valid app JWT and an existing user whose current database role is ADMIN.
+        The JWT subject identifies the user; a role copied into the JWT does not grant access
+        after database demotion. Returns approved profile fields only, ordered by ID.
       parameters:
+        - $ref: '#/components/parameters/Search'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       security:
@@ -656,6 +719,11 @@ paths:
       responses:
         '200':
           description: A page of users (Admin only)
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
           content:
             application/json:
               schema:
