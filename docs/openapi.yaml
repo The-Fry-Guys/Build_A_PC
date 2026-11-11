@@ -3,10 +3,11 @@ info:
   title: Build A PC API
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
-    Currently implemented operations are GET /, GET /health, GET /parts, and GET /parts/{id}.
+    Currently implemented operations are GET /, GET /actuator/health, GET /parts, and GET /parts/{id}.
     Other operations describe the planned API contract.
-    Successful responses use application/json. Errors use application/problem+json,
-    except database readiness failures, which return an ApiHealth JSON body with HTTP 503.
+    Versioned API responses use application/json and errors use application/problem+json.
+    Database readiness is exposed by Spring Boot Actuator at /actuator/health using
+    application/vnd.spring-boot.actuator.v3+json.
     Unsupported HTTP methods return HTTP 405 Problem Details with an Allow header;
     methods on planned operations are not available until implemented.
     Unknown routes return HTTP 404 Problem Details.
@@ -35,18 +36,6 @@ components:
         version:
           type: string
           example: v1
-
-    ApiHealth:
-      type: object
-      description: Readiness determined by executing SELECT 1 against the configured database.
-      required: [status, database]
-      properties:
-        status:
-          type: string
-          enum: [UP, DOWN]
-        database:
-          type: string
-          enum: [UP, DOWN]
 
     PageMetadata:
       type: object
@@ -325,27 +314,36 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /health:
+  /actuator/health:
+    servers:
+      - url: /
+        description: Spring Boot Actuator endpoint at the application root
     get:
       tags: [System]
-      summary: Check database readiness
+      summary: Check application and database health
       responses:
         '200':
-          description: Database query succeeded; status and database are UP.
+          description: The application and configured database are healthy.
           content:
-            application/json:
+            application/vnd.spring-boot.actuator.v3+json:
               schema:
-                $ref: '#/components/schemas/ApiHealth'
-        '406':
-          $ref: '#/components/responses/NotAcceptable'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [UP]
         '503':
-          description: Database query failed; status and database are DOWN. Connection details are never returned.
+          description: The application or configured database is unhealthy.
           content:
-            application/json:
+            application/vnd.spring-boot.actuator.v3+json:
               schema:
-                $ref: '#/components/schemas/ApiHealth'
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [DOWN]
 
   /auth/github:
     post:
