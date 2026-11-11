@@ -34,7 +34,6 @@ class PCBuildControllerTest @Autowired constructor(
 
     @Test
     fun `createBuild returns 400 Bad Request when one or more part IDs do not exist in catalog`() {
-        // Build the mock catalog part to ensure standard UUID generation
         val foundPart = CatalogPart(category = "CPU", name = "Test CPU")
         val validPartId = foundPart.id
         val invalidPartId = UUID.randomUUID()
@@ -57,8 +56,6 @@ class PCBuildControllerTest @Autowired constructor(
         val request = CreateBuildRequest("Dream PC", listOf(foundPart.id))
 
         `when`(partRepository.findAllById(request.partIds)).thenReturn(listOf(foundPart))
-
-        // Return the captured entity back to the controller
         `when`(buildRepository.save(any(PCBuild::class.java))).thenAnswer { invocation ->
             invocation.arguments[0] as PCBuild
         }
