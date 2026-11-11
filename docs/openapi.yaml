@@ -4,8 +4,7 @@ info:
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
     Implemented operations include GET /, GET /actuator/health, POST /auth/github,
-    GET /me, GET /parts, and GET /parts/{id}. The PRD-6 contract adds GET /admin/users
-    and optional catalog search.
+    GET /me, GET /parts, GET /parts/{id}, and GET /admin/users. Catalog and user lists support search.
     Other operations describe the planned API contract.
     Versioned API responses use application/json and errors use application/problem+json.
     Database readiness is exposed by Spring Boot Actuator at /actuator/health using

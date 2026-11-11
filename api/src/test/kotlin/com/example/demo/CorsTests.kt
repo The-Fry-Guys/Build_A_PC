@@ -130,6 +130,5 @@ class CorsTests {
             content { contentTypeCompatibleWith("application/problem+json") }
         }
 
-        verifyNoInteractions(users)
     }
 }

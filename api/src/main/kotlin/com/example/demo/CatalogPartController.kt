@@ -5,12 +5,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Sort
 import com.fasterxml.jackson.annotation.JsonProperty
-import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
-import org.springframework.web.server.ResponseStatusException
 import java.math.BigDecimal
 import java.util.UUID
 import java.time.Instant
@@ -24,16 +20,12 @@ class CatalogPartController(private val repository: CatalogPartRepository) {
     fun getParts(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int,
+        @RequestParam(required = false) q: String? = null,
     ): CatalogPartPage {
-        if (page < 0 || size !in 1..100) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be nonnegative and size must be between 1 and 100")
-        }
-        if (page.toLong() * size > Int.MAX_VALUE) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Requested page offset is too large")
-        }
-
         // Bound the SQL query and use a unique sort key so pages are deterministic.
-        val parts = repository.findAll(PageRequest.of(page, size, Sort.by("id")))
+        val pageable = directoryPage(page, size)
+        val parts = if (q.isNullOrBlank()) repository.findAll(pageable)
+        else repository.findAll(directorySearch(q, "name", "category"), pageable)
 
         return CatalogPartPage(
             content = parts.content.map { it.toResponse() },

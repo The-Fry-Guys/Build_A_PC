@@ -84,6 +84,23 @@ export class Session {
     }
   };
 
+  /** Rechecks current database permissions while retaining the active screen during the request. */
+  refresh = async () => {
+    if (this.state.loading || !this.state.user) return;
+    const generation = ++this.generation;
+    try {
+      await this.load(generation);
+    } catch (error) {
+      await this.failed(error, generation);
+    }
+  };
+
+  /** Ends an expired API session using the same guarded storage cleanup as restoration. */
+  expire = async () => {
+    const generation = ++this.generation;
+    await this.failed(new ApiError(401, 'Your session ended. Sign in again.'), generation);
+  };
+
   login = async (input: GitHubLoginInput) => {
     const generation = ++this.generation;
     this.update({ user: null, loading: true, error: null });

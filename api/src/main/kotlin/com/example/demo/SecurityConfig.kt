@@ -21,14 +21,17 @@ import tools.jackson.databind.ObjectMapper
 @Configuration
 @Import(AppCorsConfiguration::class)
 class SecurityConfig {
+    /** Builds stateless authentication and checks current database roles for privileged requests. */
     @Bean
     fun securityFilterChain(
         http: HttpSecurity,
         objectMapper: ObjectMapper,
         jwtDecoder: JwtDecoder,
+        users: UserRepository,
         @Qualifier("appCorsConfigurationSource")
         cors: CorsConfigurationSource,
     ): SecurityFilterChain {
+        val admin = DatabaseAdminAuthorization(users)
         val unauthorized = AuthenticationEntryPoint { request, response, _ ->
             response.setHeader("WWW-Authenticate", "Bearer")
             writeProblemDetail(
@@ -77,10 +80,10 @@ class SecurityConfig {
                     "/api/v1/parts/**",
                 ).permitAll()
 
-                it.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                it.requestMatchers("/api/v1/admin/**").access(admin)
 
                 // Future catalog mutations require an administrator.
-                it.requestMatchers("/api/v1/parts", "/api/v1/parts/**").hasRole("ADMIN")
+                it.requestMatchers("/api/v1/parts", "/api/v1/parts/**").access(admin)
 
                 it.requestMatchers(
                     "/api/v1/me",

@@ -11,12 +11,14 @@ import type { ComponentProps } from 'react';
 import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
 
 import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useSession } from '@/auth/session-provider';
 
 import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 export default function AppTabs() {
+  const { user } = useSession();
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
@@ -24,6 +26,9 @@ export default function AppTabs() {
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
             <TabButton>Home</TabButton>
+          </TabTrigger>
+          <TabTrigger name="admin" href="/admin" asChild>
+            <TabButton hidden={user?.role !== 'ADMIN'}>Admin</TabButton>
           </TabTrigger>
           <TabTrigger name="explore" href="/explore" asChild>
             <TabButton>Explore</TabButton>
@@ -35,11 +40,12 @@ export default function AppTabs() {
 }
 
 // Router's slot ref uses the component type; Pressable expects its instance type.
-type TabButtonProps = Omit<TabTriggerSlotProps, 'ref'> & Pick<ComponentProps<typeof Pressable>, 'ref'>;
+type TabButtonProps = Omit<TabTriggerSlotProps, 'ref'> & Pick<ComponentProps<typeof Pressable>, 'ref'> & { hidden?: boolean };
 
-export function TabButton({ children, isFocused, ...props }: TabButtonProps) {
+/** Renders a browser navigation link while keeping hidden admin links out of accessibility navigation. */
+export function TabButton({ children, isFocused, hidden, ...props }: TabButtonProps) {
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+    <Pressable {...props} accessibilityRole="link" style={({ pressed }) => [hidden && { display: 'none' }, pressed && styles.pressed]}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
         style={styles.tabButtonView}>

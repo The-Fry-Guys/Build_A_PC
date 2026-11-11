@@ -25,6 +25,9 @@ import java.util.UUID
 @Import(SecurityConfig::class)
 class ApiErrorContractTests @Autowired constructor(private val mvc: MockMvc) {
     @MockitoBean
+    private lateinit var users: UserRepository
+
+    @MockitoBean
     private lateinit var repository: CatalogPartRepository
 
     @MockitoBean
@@ -69,14 +72,14 @@ class ApiErrorContractTests @Autowired constructor(private val mvc: MockMvc) {
     /** Verifies that unsupported HTTP methods preserve HTTP 405 and the Allow header. */
     @Test
     fun `unsupported method returns method not allowed`() {
-        mvc.post("/api/v1/parts").andExpect {
+        mvc.post("/api/v1/").andExpect {
             status { isMethodNotAllowed() }
             header { string("Allow", containsString("GET")) }
             content { contentTypeCompatibleWith("application/problem+json") }
             jsonPath("$.type") { value("about:blank") }
             jsonPath("$.title") { value("Method Not Allowed") }
             jsonPath("$.status") { value(405) }
-            jsonPath("$.instance") { value("/api/v1/parts") }
+            jsonPath("$.instance") { value("/api/v1/") }
         }
     }
 

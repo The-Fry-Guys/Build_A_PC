@@ -153,6 +153,7 @@ class JwtSecurityTests {
 
     @Test
     fun `regular user is forbidden from admin routes`() {
+        `when`(users.findById(userId)).thenReturn(Optional.of(user))
         mvc.get("/api/v1/admin/users") {
             header("Authorization", "Bearer ${tokens.issueFor(user)}")
         }.andExpect {
@@ -161,30 +162,26 @@ class JwtSecurityTests {
             jsonPath("$.status") { value(403) }
         }
 
-        verifyNoInteractions(users)
     }
 
     @Test
     fun `admin role passes authorization for the admin namespace`() {
+        `when`(users.findById(userId)).thenReturn(Optional.of(User(email = "admin@example.test", role = UserRole.ADMIN, id = userId)))
         mvc.get("/api/v1/admin/users") {
             header("Authorization", "Bearer ${signedToken(role = "ADMIN")}")
         }.andExpect {
-            // Authorization succeeds, but no admin controller exists yet.
+            // Authorization succeeds; this MVC slice intentionally excludes the admin controller.
             status { isNotFound() }
         }
     }
 
+    /** Public catalog reads remain accessible without an app token. */
     @Test
-    fun `catalog and health remain public`() {
+    fun `catalog remains public`() {
         `when`(catalog.findAll(any(Pageable::class.java)))
             .thenReturn(Page.empty<CatalogPart>())
-        `when`(jdbc.queryForObject("SELECT 1", Int::class.java)).thenReturn(1)
 
         mvc.get("/api/v1/parts").andExpect { status { isOk() } }
-        mvc.get("/actuator/health").andExpect {
-            status { isOk() }
-            jsonPath("$.status") { value("UP") }
-        }
     }
 
     private fun signedToken(

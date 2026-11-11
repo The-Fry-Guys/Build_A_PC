@@ -44,6 +44,7 @@ npx expo start --web
   - Run `./gradlew bootRun`.
   - Run `curl -i http://localhost:8080/api/v1/` for API information.
   - Run `curl -i http://localhost:8080/actuator/health` for database readiness (200 UP or 503 DOWN).
+  - [Admin tools (PRD-6)](docs/admin-tools.md): provisioning, supported web/Android behavior, isolated test setup, and commands for reviewers.
   - Run `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` for a page of database parts.
   - Run `curl -i http://localhost:8080/api/v1/parts/{id}` for one part by UUID.
 
