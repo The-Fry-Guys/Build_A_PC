@@ -9,12 +9,9 @@ export default function ActiveBuild() {
         selectedParts,
         buildName,
         removePart,
-        getTotalPrice,
-        getCompatibility
+        getTotalPrice
     } = useBuild();
 
-    /* Retrieves the build's compatibility status whether their current parts are compatible or not, and which part causes incompatability */
-    const compatibility = getCompatibility();
     const renderSelectedPart = ({ item }: { item: Part }) => (
         <View style = {styles.card}>
             <View style = {styles.cardInfo}>
@@ -35,15 +32,6 @@ export default function ActiveBuild() {
     return (
         <View style = {styles.container}>
             <Text style = {styles.title}>{buildName} </Text>
-            <View style = {[styles.banner, compatibility.compatible ? styles.bannerSuccess : styles.bannerWarning]}>
-                <Text style = {[styles.bannerText, compatibility.compatible ? styles.bannerTextSuccess : styles.bannerTextWarning]}>
-                    {compatibility.compatible ? 'All parts are compatible' : 'Compatibility Issues Found'}
-                </Text>
-                {!compatibility.compatible && compatibility.issues.map((issue, index) => (
-                    <Text key = {index} style={styles.issueText}> {issue} </Text>
-                ))}
-            </View>
-
             <Text style = {styles.totalText}>Total: ${getTotalPrice().toFixed(2)} </Text>
 
             {selectedParts.length === 0 ? (
@@ -84,12 +72,4 @@ const styles = StyleSheet.create({
     price: { fontSize: 14, color: '#2e7d32' },
     removeButton: { backgroundColor: '#d32f2f', padding: 8, borderRadius: 6 },
     removeButtonText: { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
-
-    banner: { padding: 12, borderRadius: 8, marginBottom: 16 },
-    bannerSuccess: { backgroundColor: '#e8f5e9', borderColor: '#4caf50', borderWidth: 1 },
-    bannerWarning: { backgroundColor: '#fff3e0', borderColor: '#ff9800', borderWidth: 1 },
-    bannerText: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-    bannerTextSuccess: { color: '#2e7d32' },
-    bannerTextWarning: { color: '#e65100' },
-    issueText: { fontSize: 14, color: '#d84315', marginTop: 4 }
 });

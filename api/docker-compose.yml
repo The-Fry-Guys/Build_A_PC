@@ -1,24 +1,30 @@
 # Run from the api folder: docker compose up --build
 #
-# Still needed:
-# TODO: move credentials to a .env file / secrets manager (change-me is a placeholder)
-# TODO: replace ddl-auto=update with Flyway or Liquibase migrations
-# TODO: add entities/endpoints (the database is currently unused)
-# TODO: lock down SecurityConfig (currently permits all requests, CSRF disabled)
-# TODO: remove spring-boot-h2console / H2 from build.gradle once on Postgres
-# TODO: add application-prod.properties and a prod compose file (don't expose 5432 in prod)
-# TODO: React Native app must call http://<computer-LAN-IP>:8080 on a physical device, not localhost
+# Set LOCAL_DB_PASSWORD in the shell before starting the local development stack.
 services:
+  expo:
+    build:
+      context: ../client
+    ports:
+      - "8081:8081"
+    environment:
+      EXPO_PACKAGER_PROXY_URL: ${EXPO_PACKAGER_PROXY_URL:-http://localhost:8081}
+    volumes:
+      - ../client/src:/app/src
+      - ../client/assets:/app/assets
+      - ../client/app.json:/app/app.json
+    stdin_open: true
+    tty: true
+
   api:
     build: .
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
-      SPRING_DATASOURCE_USERNAME: buildapc
-      SPRING_DATASOURCE_PASSWORD: change-me
-      # Dev only: let Hibernate create/update tables until migrations exist
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+        SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
+        SPRING_DATASOURCE_USERNAME: buildapc
+        SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD for the local database}
+        SPRING_JPA_HIBERNATE_DDL_AUTO: update
     depends_on:
       db:
         condition: service_healthy
@@ -28,7 +34,7 @@ services:
     environment:
       POSTGRES_DB: buildapc
       POSTGRES_USER: buildapc
-      POSTGRES_PASSWORD: change-me
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD for the local database}
     ports:
       - "5432:5432"
     volumes:

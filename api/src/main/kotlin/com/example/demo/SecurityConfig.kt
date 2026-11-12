@@ -34,6 +34,9 @@ class SecurityConfig {
                         )
                     }
             }
-            .authorizeHttpRequests { it.anyRequest().permitAll() }
+            .authorizeHttpRequests {
+                it.requestMatchers("/api/v1/builds", "/api/v1/builds/**").authenticated()
+                    .anyRequest().permitAll()
+            }
             .build()
 }

@@ -1,88 +1,179 @@
 package com.example.demo
 
-import org.springframework.web.bind.annotation.*
-import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.jwt.Jwt
+import com.fasterxml.jackson.annotation.JsonProperty
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.security.core.Authentication
+import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
-import java.util.UUID
 import java.time.Instant
+import java.math.BigDecimal
+import java.util.UUID
 
-/* Exposes database-backed routes for users to create and manage their PC builds.
- * This controller acts as an OAuth2 Resource Server by extracting the user ID directly from the injected JWT.
- * It supports the core product goals of allowing a user to construct a pc and view all their pc builds. */
 @RestController
-@RequestMapping("/api/v1/builds", produces = ["application/json"])
+@RequestMapping("/api/v1/builds", produces = [MediaType.APPLICATION_JSON_VALUE])
 class PCBuildController(
     private val buildRepository: PCBuildRepository,
-    private val partRepository: CatalogPartRepository
+    private val partRepository: CatalogPartRepository,
 ) {
-    /* Returns all builds belonging to the currently authenticated user. */
     @GetMapping
-    fun getMyBuilds(@AuthenticationPrincipal jwt: Jwt): List<BuildResponse> {
-        val userId = jwt.subject ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "INVALID TOKEN")
-        return buildRepository.findAllByUserId(userId).map { it.toBuildResponse() }
+    @Transactional(readOnly = true)
+    fun getMyBuilds(
+        authentication: Authentication,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int,
+    ): PcBuildPage {
+        val userId = authentication.userId()
+        if (page < 0 || size !in 1..100) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be nonnegative and size must be between 1 and 100")
+        }
+        if (page.toLong() * size > Int.MAX_VALUE) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Requested page offset is too large")
+        }
+        val builds = buildRepository.findAllByUserId(
+            userId,
+            PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"))),
+        )
+        return PcBuildPage(
+            content = builds.content.map { BuildResponse(it.id, it.userId, it.name, it.createdAt) },
+            page = page,
+            size = size,
+            totalElements = builds.totalElements,
+            totalPages = builds.totalPages,
+        )
     }
 
-    /* Creates a new build from a list of catalog part UUIDs. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun createBuild(
-        @AuthenticationPrincipal jwt: Jwt,
-        @RequestBody request: CreateBuildRequest
-    ): BuildResponse {
-        val userId = jwt.subject ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED)
-        val parts = partRepository.findAllById(request.partIds)
-        if (parts.size != request.partIds.size) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "ONE OR MORE PARTS NOT FOUND")
-        }
-
-        val build = PCBuild(
-            userId = userId,
-            name = request.name,
-            parts = parts.toMutableList()
-        )
-
-        return buildRepository.save(build).toBuildResponse()
+    @Transactional
+    fun createBuild(authentication: Authentication, @RequestBody request: CreateBuildRequest): BuildDetailResponse {
+        val userId = authentication.userId()
+        val parts = validatedParts(request)
+        val build = PCBuild(userId = userId, name = request.name)
+        build.parts.addAll(parts.map { (part, quantity) -> BuildPart(build = build, catalogPart = part, quantity = quantity) })
+        return buildRepository.save(build).toBuildDetailResponse()
     }
 
-    /* Deletes a build, enforcing that a user can only delete their own resources. */
+    @GetMapping("/{id}")
+    @Transactional(readOnly = true)
+    fun getBuild(authentication: Authentication, @PathVariable id: UUID): BuildDetailResponse =
+        ownedBuild(id, authentication.userId()).toBuildDetailResponse()
+
+    @PutMapping("/{id}")
+    @Transactional
+    fun updateBuild(
+        authentication: Authentication,
+        @PathVariable id: UUID,
+        @RequestBody request: CreateBuildRequest,
+    ): BuildDetailResponse {
+        val build = ownedBuild(id, authentication.userId())
+        val parts = validatedParts(request)
+        build.name = request.name
+        build.parts.clear()
+        build.parts.addAll(parts.map { (part, quantity) -> BuildPart(build = build, catalogPart = part, quantity = quantity) })
+        return build.toBuildDetailResponse()
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun deleteBuild(
-        @AuthenticationPrincipal jwt: Jwt,
-        @PathVariable id: UUID
-    ) {
-        val userId = jwt.subject ?: throw ResponseStatusException(HttpStatus.UNAUTHORIZED)
-        val build = buildRepository.findById(id).orElseThrow {
-            ResponseStatusException(HttpStatus.NOT_FOUND, "BUILD NOT FOUND")
-        }
-
-        if (build.userId != userId) {
-            throw ResponseStatusException(HttpStatus.FORBIDDEN, "YOU DON'T HAVE PERMISSION")
-        }
+    @Transactional
+    fun deleteBuild(authentication: Authentication, @PathVariable id: UUID) {
+        val build = ownedBuild(id, authentication.userId())
         buildRepository.delete(build)
+    }
+
+    private fun ownedBuild(id: UUID, userId: UUID): PCBuild {
+        val build = buildRepository.findById(id).orElseThrow { ResourceNotFoundException() }
+        if (build.userId != userId) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to access this resource.")
+        }
+        return build
+    }
+
+    private fun validatedParts(request: CreateBuildRequest): List<Pair<CatalogPart, Int>> {
+        if (request.name.isBlank() || request.name.length > 255 || (request.partIds == null) == (request.parts == null)) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Provide a nonblank build name of at most 255 characters and exactly one of partIds or parts.",
+            )
+        }
+        val selections = request.parts ?: request.partIds!!.map { BuildPartWriteRequest(it, 1) }
+        val ids = selections.map { it.partId }
+        if (ids.size != ids.toSet().size || selections.any { it.quantity == null || it.quantity < 1 }) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Part IDs must be unique and quantities must be positive.")
+        }
+        val parts = partRepository.findAllById(ids)
+        if (parts.size != ids.size) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more parts were not found.")
+        }
+        val quantities = selections.associate { it.partId to it.quantity!! }
+        return parts.map { it to quantities.getValue(it.id) }
     }
 }
 
-/* DTO for incoming build creation requests. */
+private fun Authentication.userId(): UUID = try {
+    UUID.fromString(name)
+} catch (_: IllegalArgumentException) {
+    throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user ID is invalid.")
+}
+
 data class CreateBuildRequest(
     val name: String,
-    val partIds: List<UUID>
+    val partIds: List<UUID>? = null,
+    val parts: List<BuildPartWriteRequest>? = null,
 )
 
-/* DTO for outgoing build data to the client. */
+data class BuildPartWriteRequest(val partId: UUID, val quantity: Int?)
+
+data class PcBuildPage(
+    val content: List<BuildResponse>,
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
 data class BuildResponse(
+    @get:JsonProperty("build_id") val buildId: UUID,
+    @get:JsonProperty("user_id") val userId: UUID,
+    val name: String,
+    @get:JsonProperty("created_at") val createdAt: Instant,
+)
+
+data class BuildDetailResponse(
     val id: UUID,
     val name: String,
-    val parts: List<PartResponse>,
-    val createdAt: Instant
+    val parts: List<BuildPartResponse>,
+    val createdAt: Instant,
 )
 
-/* Extension function mapping the database entity to its public API representation. */
-private fun PCBuild.toBuildResponse() = BuildResponse(
+private fun PCBuild.toBuildDetailResponse() = BuildDetailResponse(
     id = id,
     name = name,
-    parts = parts.map { PartResponse(it.id, it.category, it.name, it.price, it.createdAt) },
-    createdAt = createdAt
+    parts = parts.sortedBy { it.catalogPart.id }.map {
+        val part = it.catalogPart
+        BuildPartResponse(part.id, part.category, part.name, part.price, part.createdAt, it.quantity)
+    },
+    createdAt = createdAt,
+)
+
+data class BuildPartResponse(
+    @get:JsonProperty("part_id") val partId: UUID,
+    val category: String,
+    val name: String,
+    val price: BigDecimal?,
+    @get:JsonProperty("created_at") val createdAt: Instant,
+    val quantity: Int,
 )
