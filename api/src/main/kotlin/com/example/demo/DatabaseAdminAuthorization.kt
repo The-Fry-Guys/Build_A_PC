@@ -11,18 +11,29 @@ import java.util.UUID
 import java.util.function.Supplier
 
 /** Uses a verified token's subject to check current permissions without trusting stale role claims. */
-class DatabaseAdminAuthorization(private val users: UserRepository) : AuthorizationManager<RequestAuthorizationContext> {
+class DatabaseAdminAuthorization(
+    private val users: UserRepository,
+) : AuthorizationManager<RequestAuthorizationContext> {
     /** Denies access unless a validated JWT identifies an existing administrator right now. */
-    override fun authorize(authentication: Supplier<out Authentication?>, context: RequestAuthorizationContext): AuthorizationDecision {
-        val principal = authentication.get() as? JwtAuthenticationToken ?: return AuthorizationDecision(false)
-        if (!principal.isAuthenticated) return AuthorizationDecision(false)
-        val id = runCatching { UUID.fromString(principal.token.subject) }.getOrNull() ?: return AuthorizationDecision(false)
-        val allowed = try {
+    override fun authorize(
+        authentication: Supplier<out Authentication?>,
+        context: RequestAuthorizationContext,
+    ): AuthorizationDecision {
+        val principal = authentication.get() as? JwtAuthenticationToken
+        val id = principal?.takeIf { it.isAuthenticated }?.let {
+            runCatching { UUID.fromString(it.token.subject) }.getOrNull()
+        }
+        return AuthorizationDecision(id != null && isCurrentAdmin(id))
+    }
+
+    /** Reads the current role and denies access when database permissions cannot be verified. */
+    private fun isCurrentAdmin(id: UUID): Boolean =
+        try {
             users.findById(id).orElse(null)?.role == UserRole.ADMIN
         } catch (_: DataAccessException) {
-            LoggerFactory.getLogger(javaClass).warn("Admin access denied because current database permissions could not be verified")
+            LoggerFactory.getLogger(javaClass).warn(
+                "Admin access denied because current database permissions could not be verified",
+            )
             false
         }
-        return AuthorizationDecision(allowed)
-    }
 }

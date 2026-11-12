@@ -215,6 +215,25 @@ class GitHubIdentityClientTests {
                 ),
             )
 
+        expectVerifiedProfile()
+
+        val result = client.exchange(
+            code = "fake-authorization-code",
+            codeVerifier = verifier,
+            redirectUri = redirectUri,
+        )
+
+        assertEquals(AuthProvider.GITHUB, result.provider)
+        assertEquals("12345", result.providerUserId)
+        assertEquals("primary@example.com", result.email)
+        assertEquals("Test User", result.displayName)
+        assertTrue(result.emailVerified)
+
+        server.verify()
+    }
+
+    /** Expects an authenticated provider profile with a verified primary email. */
+    private fun expectVerifiedProfile() {
         server.expect(requestTo("https://api.github.com/user"))
             .andExpect(method(HttpMethod.GET))
             .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer fake-access-token"))
@@ -254,19 +273,6 @@ class GitHubIdentityClientTests {
                     MediaType.APPLICATION_JSON,
                 ),
             )
-
-        val result = client.exchange(
-            code = "fake-authorization-code",
-            codeVerifier = verifier,
-            redirectUri = redirectUri,
-        )
-
-        assertEquals(AuthProvider.GITHUB, result.provider)
-        assertEquals("12345", result.providerUserId)
-        assertEquals("primary@example.com", result.email)
-        assertEquals("Test User", result.displayName)
-        assertTrue(result.emailVerified)
-
-        server.verify()
     }
+
 }

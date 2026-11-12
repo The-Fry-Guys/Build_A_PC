@@ -1,9 +1,15 @@
 # Build_A_PC
 Project 3 for CST438 Software Engineering
 
+## Project documentation
+
+[Architecture](docs/architecture.md) · [Decisions](docs/adr/) ·
+[Security](docs/security.md) · [Runbook](docs/runbook.md) ·
+[Demo](docs/demo.md) · [Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
+
 ## How to Setup Expo for development
 
-- Install Node.js **22.13+ within 22.x**, npm, and **Java 21**.
+- Install Node.js **24.x** (matching Expo CI), npm, and **Java 21**.
 - Windows: use Git Bash for `load_env.sh`; use your Windows Android SDK.
 - From `client/`, install dependencies once (and after lockfile changes):
 

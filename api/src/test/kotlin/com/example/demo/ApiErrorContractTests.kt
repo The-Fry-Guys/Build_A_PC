@@ -21,20 +21,12 @@ import org.springframework.test.web.servlet.post
 import java.util.UUID
 
 /** Verifies API error status codes, Problem Details fields, and response content types. */
+@MockitoBean(types = [UserRepository::class, JdbcTemplate::class, JwtDecoder::class])
 @WebMvcTest(CatalogPartController::class, HelloController::class)
 @Import(SecurityConfig::class)
 class ApiErrorContractTests @Autowired constructor(private val mvc: MockMvc) {
     @MockitoBean
-    private lateinit var users: UserRepository
-
-    @MockitoBean
     private lateinit var repository: CatalogPartRepository
-
-    @MockitoBean
-    private lateinit var jdbcTemplate: JdbcTemplate
-
-    @MockitoBean
-    private lateinit var jwtDecoder: JwtDecoder
 
     /** Verifies that a catalog query failure returns sanitized HTTP 500 Problem Details. */
     @Test

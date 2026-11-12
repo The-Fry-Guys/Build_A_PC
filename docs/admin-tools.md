@@ -52,8 +52,9 @@ belongs in the Expo application.
 ## Checks for the reviewer to run
 
 After the user authorized execution, verification on 2026-11-11 passed: 135 backend tests,
-104 Expo unit/component tests, and all 3 Playwright tests including accessibility checks.
-Backend line coverage was 94.97% overall (95.80% for the service/authorization/search gate).
+104 Expo unit/component tests, and all 4 Playwright tests including accessibility checks.
+After the Detekt cleanup, backend line coverage is 95.69% overall
+(98.04% for the service/authorization/search gate), with zero Detekt findings.
 Client line coverage was 93.51% over the files configured in Jest, with 76.02% branch coverage.
 Both configured 70% coverage gates passed. TypeScript and lint passed with existing warnings.
 Manual Android device testing and the separate live Supabase connection check remain outstanding.
@@ -101,6 +102,11 @@ search, public parts, missing prices, logout, ordinary-user denial, and zero ser
 axe findings on admin pages. It does not log into GitHub or Google. API tests separately cover
 revocation with an already-issued token.
 
+The Appendix I auth test clicks Sign in with GitHub, checks the popup authorization
+URL, callback, state, and S256 PKCE challenge, then closes it. The request is intercepted
+before reaching GitHub; its public client ID is synthetic. Cancellation must not call
+the API exchange. See [the test decision](adr/0003-github-popup-test-boundary.md).
+
 From the repository root, remove the disposable stack afterward:
 
 ```sh
@@ -110,6 +116,14 @@ docker compose --env-file /dev/null -f compose.e2e.yml down --volumes
 The `e2e` profile must be absent from production. A startup guard refuses `e2e` combined with
 `prod`/`production` or a hosted database, and an integration test verifies the token hook is
 absent in a normal application context.
+
+### CI status
+
+The teammate's Expo workflow checks TypeScript and exports Android/web bundles.
+The existing API workflow builds/tests `api/` on Java 21; Detekt scans `api/src`.
+The local workflow changes are uncommitted. The separate admin CI draft remains
+untracked and is not enabled. Jest and Playwright currently require the commands above;
+the teammate workflows do not run them.
 
 ### Manual web and Android checks
 

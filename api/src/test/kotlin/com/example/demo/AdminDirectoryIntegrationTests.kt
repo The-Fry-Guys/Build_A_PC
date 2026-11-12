@@ -64,11 +64,13 @@ class AdminDirectoryIntegrationTests {
         val first = given().port(port).auth().oauth2(token).queryParam("q", " DIRECTORY ").queryParam("size", 1)
             .get("/api/v1/admin/users").then().statusCode(200).body("totalElements", equalTo(2))
             .body("totalPages", equalTo(2)).extract().path<String>("content[0].id")
-        val second = given().port(port).auth().oauth2(token).queryParam("q", "directory").queryParam("size", 1).queryParam("page", 1)
+        val second = given().port(port).auth().oauth2(token)
+            .queryParam("q", "directory").queryParam("size", 1).queryParam("page", 1)
             .get("/api/v1/admin/users").then().statusCode(200).extract().path<String>("content[0].id")
         kotlin.test.assertNotEquals(first, second)
         given().port(port).auth().oauth2(token).queryParam("q", "directory").queryParam("page", 10)
-            .get("/api/v1/admin/users").then().statusCode(200).body("content", hasSize<Any>(0)).body("totalElements", equalTo(2))
+            .get("/api/v1/admin/users").then().statusCode(200)
+            .body("content", hasSize<Any>(0)).body("totalElements", equalTo(2))
     }
 
     /** Percent, underscore, case, UUIDs, and null prices follow the documented search contract. */
@@ -78,10 +80,12 @@ class AdminDirectoryIntegrationTests {
             .get("/api/v1/admin/users").then().statusCode(200).body("totalElements", equalTo(1))
         given().port(port).queryParam("q", "100%_").get("/api/v1/parts").then().statusCode(200)
             .body("totalElements", equalTo(1)).body("content[0].price", nullValue())
-        given().port(port).queryParam("q", "CPU").get("/api/v1/parts").then().statusCode(200).body("totalElements", equalTo(1))
+        given().port(port).queryParam("q", "CPU").get("/api/v1/parts").then()
+            .statusCode(200).body("totalElements", equalTo(1))
         given().port(port).auth().oauth2(token).queryParam("q", regular.id.toString()).get("/api/v1/admin/users")
             .then().statusCode(200).body("content[0].id", equalTo(regular.id.toString()))
-        given().port(port).queryParam("q", "' OR 1=1 --").get("/api/v1/parts").then().statusCode(200).body("totalElements", equalTo(0))
+        given().port(port).queryParam("q", "' OR 1=1 --").get("/api/v1/parts").then()
+            .statusCode(200).body("totalElements", equalTo(0))
     }
 
     /** Demotion must reject the exact token that worked before the database change. */

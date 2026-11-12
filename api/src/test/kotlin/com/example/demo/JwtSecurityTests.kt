@@ -26,6 +26,7 @@ import java.util.Optional
 import java.util.UUID
 
 /** Exercises real JWT authentication through the HTTP security filter. */
+@MockitoBean(types = [JdbcTemplate::class])
 @WebMvcTest(
     controllers = [
         MeController::class,
@@ -59,9 +60,6 @@ class JwtSecurityTests {
 
     @MockitoBean
     private lateinit var catalog: CatalogPartRepository
-
-    @MockitoBean
-    private lateinit var jdbc: JdbcTemplate
 
     private val userId = UUID.randomUUID()
 
@@ -166,7 +164,9 @@ class JwtSecurityTests {
 
     @Test
     fun `admin role passes authorization for the admin namespace`() {
-        `when`(users.findById(userId)).thenReturn(Optional.of(User(email = "admin@example.test", role = UserRole.ADMIN, id = userId)))
+        `when`(users.findById(userId)).thenReturn(
+            Optional.of(User(email = "admin@example.test", role = UserRole.ADMIN, id = userId)),
+        )
         mvc.get("/api/v1/admin/users") {
             header("Authorization", "Bearer ${signedToken(role = "ADMIN")}")
         }.andExpect {

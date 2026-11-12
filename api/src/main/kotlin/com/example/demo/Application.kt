@@ -6,9 +6,11 @@ import org.springframework.boot.runApplication
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 
+/** Starts the Spring Boot API and its configured services. */
 @SpringBootApplication
 class Application {
 
+	/** Lists registered beans after application startup. */
 	@Bean
 	fun commandLineRunner(ctx: ApplicationContext) = CommandLineRunner {
 		println("Let's inspect the beans provided by Spring Boot:")
@@ -17,6 +19,7 @@ class Application {
 	}
 }
 
+/** Launches the API with command-line arguments. */
 fun main(args: Array<String>) {
-	runApplication<Application>(*args)
+	runApplication<Application>(args = args)
 }

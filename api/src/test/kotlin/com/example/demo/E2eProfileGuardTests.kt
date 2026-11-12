@@ -10,7 +10,8 @@ class E2eProfileGuardTests {
     @Test
     fun `production and e2e cannot run together`() {
         for (profile in listOf("prod", "production")) {
-            val environment = MockEnvironment().withProperty("spring.datasource.url", "jdbc:postgresql://localhost:5432/test")
+            val environment = MockEnvironment()
+                .withProperty("spring.datasource.url", "jdbc:postgresql://localhost:5432/test")
             environment.setActiveProfiles("e2e", profile)
             assertFailsWith<IllegalStateException> { E2eProfileGuard(environment) }
         }
@@ -19,7 +20,8 @@ class E2eProfileGuardTests {
     /** A production database hostname must be rejected even without a named production profile. */
     @Test
     fun `hosted database is rejected`() {
-        val environment = MockEnvironment().withProperty("spring.datasource.url", "jdbc:postgresql://hosted.example:5432/postgres")
+        val environment = MockEnvironment()
+            .withProperty("spring.datasource.url", "jdbc:postgresql://hosted.example:5432/postgres")
         environment.setActiveProfiles("e2e")
         assertFailsWith<IllegalStateException> { E2eProfileGuard(environment) }
     }

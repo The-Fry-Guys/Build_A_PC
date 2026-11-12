@@ -127,8 +127,10 @@ class ApiHttpIntegrationTests {
             .post("/api/v1/auth/github")
             .then().statusCode(200).extract().asString()
         assertEquals(userId, parse(repeated).path("user").path("id").stringValue())
-        assertEquals(1, identities.findAllByUser_Id(UUID.fromString(userId)).size)
-        assertEquals(1L, jdbc.queryForObject("SELECT count(*) FROM public.users WHERE email = ?", Long::class.java, email))
+        assertEquals(1, identities.findAllByUserId(UUID.fromString(userId)).size)
+        assertEquals(
+            1L, jdbc.queryForObject("SELECT count(*) FROM public.users WHERE email = ?", Long::class.java, email),
+        )
     }
 
     @Test
@@ -193,9 +195,11 @@ class ApiHttpIntegrationTests {
             .extract().asString()
         assertProblem(body, 409, "/api/v1/auth/github")
         assertTrue(parse(body).path("detail").stringValue().contains("Google"))
-        val retained = identities.findAllByUser_Id(assertNotNull(user.id))
+        val retained = identities.findAllByUserId(assertNotNull(user.id))
         assertEquals(listOf(AuthProvider.GOOGLE), retained.map { it.provider })
-        assertEquals(1L, jdbc.queryForObject("SELECT count(*) FROM public.users WHERE email = ?", Long::class.java, email))
+        assertEquals(
+            1L, jdbc.queryForObject("SELECT count(*) FROM public.users WHERE email = ?", Long::class.java, email),
+        )
     }
 
     @Test
@@ -235,7 +239,8 @@ class ApiHttpIntegrationTests {
         assertTrue(document.path("paths").has("/api/v1/auth/github"))
         assertTrue(document.path("paths").has("/api/v1/me"))
         assertFalse(document.path("paths").has("/api/v1/auth/google"))
-        assertEquals("bearer", document.path("components").path("securitySchemes").path("bearerAuth").path("scheme").stringValue())
+        val bearerScheme = document.path("components").path("securitySchemes").path("bearerAuth").path("scheme")
+        assertEquals("bearer", bearerScheme.stringValue())
         val security = document.path("paths").path("/api/v1/me").path("get").path("security")
         assertTrue(security.any { it.has("bearerAuth") })
     }

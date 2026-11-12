@@ -14,5 +14,5 @@ interface IdentityRepository : JpaRepository<Identity, UUID> {
     ): Identity?
 
     /** Lists a user's identities to identify their existing login provider. */
-    fun findAllByUser_Id(userId: UUID): List<Identity>
+    fun findAllByUserId(userId: UUID): List<Identity>
 }

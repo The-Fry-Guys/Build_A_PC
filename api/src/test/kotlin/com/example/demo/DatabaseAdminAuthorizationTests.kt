@@ -52,7 +52,9 @@ class DatabaseAdminAuthorizationTests {
     /** Non-JWT callers and malformed subjects never reach the repository. */
     @Test
     fun `anonymous and malformed subjects are rejected`() {
-        val anonymous = AnonymousAuthenticationToken("fixture", "anonymous", listOf(SimpleGrantedAuthority("ROLE_ANONYMOUS")))
+        val anonymous = AnonymousAuthenticationToken(
+            "fixture", "anonymous", listOf(SimpleGrantedAuthority("ROLE_ANONYMOUS")),
+        )
         assertFalse(gate.authorize(Supplier { anonymous }, context).isGranted)
         assertFalse(gate.authorize(Supplier { principal("invalid-id") }, context).isGranted)
         verifyNoInteractions(users)

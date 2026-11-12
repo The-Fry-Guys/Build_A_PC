@@ -32,26 +32,8 @@ class SecurityConfig {
         cors: CorsConfigurationSource,
     ): SecurityFilterChain {
         val admin = DatabaseAdminAuthorization(users)
-        val unauthorized = AuthenticationEntryPoint { request, response, _ ->
-            response.setHeader("WWW-Authenticate", "Bearer")
-            writeProblemDetail(
-                HttpStatus.UNAUTHORIZED,
-                "Authentication is required to access this resource.",
-                request,
-                response,
-                objectMapper,
-            )
-        }
-
-        val forbidden = AccessDeniedHandler { request, response, _ ->
-            writeProblemDetail(
-                HttpStatus.FORBIDDEN,
-                "You are not allowed to access this resource.",
-                request,
-                response,
-                objectMapper,
-            )
-        }
+        val unauthorized = authenticationEntryPoint(objectMapper)
+        val forbidden = accessDeniedHandler(objectMapper)
 
         http
             .cors { it.configurationSource(cors) }
@@ -108,6 +90,32 @@ class SecurityConfig {
         return http.build()
     }
 
+    /** Returns sanitized authentication errors with the required bearer challenge. */
+    private fun authenticationEntryPoint(objectMapper: ObjectMapper): AuthenticationEntryPoint =
+        AuthenticationEntryPoint { request, response, _ ->
+            response.setHeader("WWW-Authenticate", "Bearer")
+            writeProblemDetail(
+                HttpStatus.UNAUTHORIZED,
+                "Authentication is required to access this resource.",
+                request,
+                response,
+                objectMapper,
+            )
+        }
+
+    /** Returns sanitized forbidden errors without revealing permission data. */
+    private fun accessDeniedHandler(objectMapper: ObjectMapper): AccessDeniedHandler =
+        AccessDeniedHandler { request, response, _ ->
+            writeProblemDetail(
+                HttpStatus.FORBIDDEN,
+                "You are not allowed to access this resource.",
+                request,
+                response,
+                objectMapper,
+            )
+        }
+
+    /** Maps the app token's role claims to Spring Security authorities. */
     private fun roleConverter(): JwtAuthenticationConverter {
         val authorities = JwtGrantedAuthoritiesConverter().apply {
             setAuthoritiesClaimName("roles")

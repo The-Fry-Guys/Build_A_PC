@@ -15,6 +15,8 @@ import java.util.Base64
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
 
+private const val MINIMUM_JWT_KEY_BYTES = 32
+
 /** Creates the signing and verification components for our API tokens. */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AppJwtProperties::class)
@@ -25,12 +27,10 @@ class AppJwtConfiguration {
         val bytes = try {
             Base64.getDecoder().decode(properties.secretBase64)
         } catch (_: IllegalArgumentException) {
-            throw IllegalStateException(
-                "APP_JWT_SECRET_BASE64 must contain valid Base64.",
-            )
+            error("APP_JWT_SECRET_BASE64 must contain valid Base64.")
         }
 
-        check(bytes.size >= 32) {
+        check(bytes.size >= MINIMUM_JWT_KEY_BYTES) {
             "APP_JWT_SECRET_BASE64 must decode to at least 32 bytes."
         }
 

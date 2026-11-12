@@ -20,6 +20,7 @@ import tools.jackson.databind.ObjectMapper
 import java.util.Optional
 import java.util.UUID
 
+@MockitoBean(types = [UserRepository::class, JwtDecoder::class])
 @WebMvcTest(PCBuildController::class)
 @Import(SecurityConfig::class)
 class PCBuildControllerTest @Autowired constructor(
@@ -34,12 +35,6 @@ class PCBuildControllerTest @Autowired constructor(
 
     @MockitoBean
     private lateinit var partRepository: CatalogPartRepository
-
-    @MockitoBean
-    private lateinit var users: UserRepository
-
-    @MockitoBean
-    private lateinit var jwtDecoder: JwtDecoder
 
     @Test
     fun `createBuild returns 400 Bad Request when one or more part IDs do not exist in catalog`() {

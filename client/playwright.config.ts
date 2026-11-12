@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-/** Runs isolated admin acceptance tests without contacting OAuth providers. */
+/** Runs admin acceptance and OAuth popup checks without contacting providers. */
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -13,6 +13,11 @@ export default defineConfig({
     url: 'http://localhost:8081',
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { EXPO_NO_DOTENV: '1', EXPO_PUBLIC_API_URL: 'http://127.0.0.1:8080/api/v1', CI: '1' },
+    env: {
+      EXPO_NO_DOTENV: '1',
+      EXPO_PUBLIC_API_URL: 'http://127.0.0.1:8080/api/v1',
+      EXPO_PUBLIC_GITHUB_WEB_CLIENT_ID: 'e2e-public-github-client',
+      CI: '1',
+    },
   },
 });

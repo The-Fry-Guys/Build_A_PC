@@ -8,6 +8,9 @@ import org.springframework.web.client.RestClient
 import java.net.http.HttpClient
 import java.time.Duration
 
+private const val CONNECT_TIMEOUT_SECONDS = 5L
+private const val READ_TIMEOUT_SECONDS = 10L
+
 /** Enables GitHub settings and the provider HTTP client. */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(GitHubOAuthProperties::class)
@@ -16,12 +19,12 @@ class GitHubOAuthConfiguration {
     @Bean
     fun githubRestClient(builder: RestClient.Builder): RestClient {
         val transport = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(5))
+            .connectTimeout(Duration.ofSeconds(CONNECT_TIMEOUT_SECONDS))
             .followRedirects(HttpClient.Redirect.NEVER)
             .build()
 
         val factory = JdkClientHttpRequestFactory(transport)
-        factory.setReadTimeout(Duration.ofSeconds(10))
+        factory.setReadTimeout(Duration.ofSeconds(READ_TIMEOUT_SECONDS))
 
         return builder
             .requestFactory(factory)

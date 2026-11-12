@@ -12,7 +12,9 @@ class AdminUserService(private val users: UserRepository) {
         val pageable = directoryPage(page, size)
         val result = if (q.isNullOrBlank()) users.findAll(pageable)
         else users.findAll(directorySearch(q, "email", "displayName"), pageable)
-        return AdminUserPage(result.content.map { AuthUserResponse.from(it) }, page, size, result.totalElements, result.totalPages)
+        return AdminUserPage(
+            result.content.map { AuthUserResponse.from(it) }, page, size, result.totalElements, result.totalPages,
+        )
     }
 }
 

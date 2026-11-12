@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  EXPO_NO_DOTENV: "1"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -41,7 +44,6 @@ jobs:
 
       - name: Export web bundle
         run: npx expo export --platform web --output-dir dist/web
-
       - name: Build Expo Docker image
         working-directory: .
         run: docker build --tag build-a-pc-expo:ci client

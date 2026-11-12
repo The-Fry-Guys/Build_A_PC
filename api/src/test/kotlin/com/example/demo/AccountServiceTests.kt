@@ -60,7 +60,7 @@ class AccountServiceTests {
             ),
         )
         assertEquals(userId, storedIdentity.user.id)
-        assertEquals(1, identities.findAllByUser_Id(userId).size)
+        assertEquals(1, identities.findAllByUserId(userId).size)
     }
 
     @Test

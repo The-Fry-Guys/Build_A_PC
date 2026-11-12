@@ -31,7 +31,7 @@ class AccountService(
         val existingUser = users.findByEmail(identity.email)
 
         if (existingUser != null) {
-            val existingProvider = identities.findAllByUser_Id(
+            val existingProvider = identities.findAllByUserId(
                 checkNotNull(existingUser.id),
             ).firstOrNull()?.provider
 
