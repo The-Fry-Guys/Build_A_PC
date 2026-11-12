@@ -81,8 +81,17 @@ class PCBuildController(
         val build = ownedBuild(id, authentication.userId())
         val parts = validatedParts(request)
         build.name = request.name
-        build.parts.clear()
-        build.parts.addAll(parts.map { (part, quantity) -> BuildPart(build = build, catalogPart = part, quantity = quantity) })
+        val existingParts = build.parts.associateBy { it.catalogPart.id }
+        val requestedIds = parts.map { (part, _) -> part.id }.toSet()
+        build.parts.removeAll { it.catalogPart.id !in requestedIds }
+        for ((part, quantity) in parts) {
+            val existing = existingParts[part.id]
+            if (existing != null) {
+                existing.quantity = quantity
+            } else {
+                build.parts.add(BuildPart(build = build, catalogPart = part, quantity = quantity))
+            }
+        }
         return build.toBuildDetailResponse()
     }
 
