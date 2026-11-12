@@ -5,7 +5,7 @@ WORKDIR /app/api
 # Copy build files first so dependency downloads are cached between builds
 COPY api/gradlew api/settings.gradle api/build.gradle ./
 COPY api/gradle ./gradle
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon > /dev/null || true
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon > /dev/null
 
 COPY api/src/main ./src/main
 COPY docs/openapi.yaml /app/docs/openapi.yaml

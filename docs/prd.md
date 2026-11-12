@@ -80,3 +80,16 @@ errors may also include the invalid field and a message.
 | `10/29` | `#3` | PRD |
 | `11/04` | `—` | Added the API error response contract |
 | `11/04` | `—` | Split the duplicate budget stories into total and category budgets |
+| `10/29` | `#12` | Updated Proposal |
+| `11/02` | `#15` | Alex/setting up android |
+| `11/02` | `#16` | Aalex/adr |
+| `11/03` | `#17` | user stories |
+| `11/04` | `#19` | OpenAPI |
+| `11/05` | `#20` | Added PR template & Updated Team Agreement |
+| `11/05` | `#24` | Austin/base_app_setup |
+| `11/05` | `#28` | erd for the database documentation |
+| `11/05` | `#29` | Update docs & add RFC9457 Error handling |
+| `11/05` | `#31` | Fernandov/docker |
+| `11/10` | `#37` | Connect Springboot to Supabase |
+| `11/10` | `#38` | Updated SpringBoot and Supabase Connection |
+| `11/11` | `#39` | Aalex/compatibility redo |

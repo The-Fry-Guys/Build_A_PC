@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useBuild } from '@/hooks/useBuild';
-import { CpuDetails, MotherboardDetails, PowerSupplyDetails } from '@/types/build';
+import { CpuDetails, MotherboardDetails } from '@/types/build';
 
 describe('useBuild Hook', () => {
     const mockCpu: CpuDetails = {
@@ -19,15 +19,6 @@ describe('useBuild Hook', () => {
         price: 200.00,
         socket: 'AM5',
         memory_slots: 'DDR5',
-    };
-
-    const mockIncompatibleMobo: MotherboardDetails = {
-        part_id: 'mobo-2',
-        category: 'Motherboard',
-        name: 'Incompatible Motherboard',
-        price: 150.00,
-        socket: 'LGA1700',
-        memory_slots: 'DDR4',
     };
 
     it('initializes with an empty build', async () => {
@@ -69,29 +60,28 @@ describe('useBuild Hook', () => {
         expect(result.current.getTotalPrice()).toBe(200.00);
     });
 
-    it('returns a successful compatibility status for matching parts', async () => {
+    it('replaces a selected part with another in the same category', async () => {
         const { result } = await renderHook(() => useBuild());
+        const replacementCpu = { ...mockCpu, part_id: 'cpu-2', price: 400 };
+        await act(async () => {
+            result.current.addPart(mockCpu);
+            result.current.addPart(replacementCpu);
+        });
 
+        expect(result.current.selectedParts).toEqual([replacementCpu]);
+        expect(result.current.getTotalPrice()).toBe(400);
+    });
+
+    it('clears selected parts and resets the total', async () => {
+        const { result } = await renderHook(() => useBuild());
         await act(async () => {
             result.current.addPart(mockCpu);
             result.current.addPart(mockMobo);
         });
-
-        const compatibility = result.current.getCompatibility();
-        expect(compatibility.compatible).toBe(true);
-        expect(compatibility.issues.length).toBe(0);
-    });
-
-    it('returns warnings when incompatible parts are added', async () => {
-        const { result } = await renderHook(() => useBuild());
-
         await act(async () => {
-            result.current.addPart(mockCpu); // AM5
-            result.current.addPart(mockIncompatibleMobo); // LGA1700
+            result.current.clearBuild();
         });
-
-        const compatibility = result.current.getCompatibility();
-        expect(compatibility.compatible).toBe(false);
-        expect(compatibility.issues[0]).toContain('Socket mismatch');
+        expect(result.current.selectedParts).toEqual([]);
+        expect(result.current.getTotalPrice()).toBe(0);
     });
 });

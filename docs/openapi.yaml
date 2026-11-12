@@ -4,7 +4,9 @@ info:
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
     Implemented operations under /api/v1 are GET /, GET /health, GET /parts,
-    GET /parts/{id}, POST /auth/github, and GET /me.
+    GET /parts/{id}, POST /auth/github, GET /me, GET /builds, POST /builds,
+    GET /builds/{id}, PUT /builds/{id}, and DELETE /builds/{id}.
+    Build routes require an app JWT whose subject is the authenticated user's UUID.
     Other operations are explicitly marked planned and are not implemented.
     Successful responses use application/json. Application errors use application/problem+json,
     except database readiness failures, which return an ApiHealth JSON body with HTTP 503.
@@ -125,6 +127,65 @@ components:
         created_at:
           type: string
           format: date-time
+
+    BuildWriteRequest:
+      type: object
+      required: [name]
+      oneOf:
+        - required: [partIds]
+        - required: [parts]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: A nonblank build name.
+        partIds:
+          type: array
+          uniqueItems: true
+          description: Complete set of unique part IDs, each with quantity one; an empty list is allowed.
+          items:
+            type: string
+            format: uuid
+        parts:
+          type: array
+          description: Complete set of selections with unique part IDs and positive quantities; an empty list is allowed.
+          items:
+            type: object
+            required: [partId, quantity]
+            properties:
+              partId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+
+    BuildDetail:
+      type: object
+      required: [id, name, parts, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuildPart'
+        createdAt:
+          type: string
+          format: date-time
+
+    BuildPart:
+      allOf:
+        - $ref: '#/components/schemas/Part'
+        - type: object
+          required: [quantity]
+          properties:
+            quantity:
+              type: integer
+              minimum: 1
 
     Part:
       type: object
@@ -634,9 +695,13 @@ paths:
 
   /builds:
     get:
-      x-implementation-status: planned
+      x-implementation-status: implemented
       tags: [ Builds ]
-      summary: Planned - Retrieve all saved builds for the authenticated user
+      summary: Retrieve all saved builds for the authenticated user
+      description: >-
+        Includes all builds belonging to the authenticated user, regardless of progress.
+        Sorted by creation time descending, then build ID ascending. The app JWT subject
+        supplies the authenticated user UUID.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -656,14 +721,25 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
-      x-implementation-status: planned
+      x-implementation-status: implemented
       tags: [ Builds ]
-      summary: Planned - Initialize a new PC build
+      summary: Initialize a new PC build
       security:
         - bearerAuth: [ ]
+      description: Requires an authenticated application user UUID. An empty part list creates a draft.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildWriteRequest'
       responses:
         '201':
           description: Build created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildDetail'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -672,10 +748,35 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /builds/{id}:
-    get:
-      x-implementation-status: planned
+    delete:
       tags: [ Builds ]
-      summary: Planned - Retrieve a specific build
+      summary: Delete a build owned by the authenticated user
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Build deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      x-implementation-status: implemented
+      tags: [ Builds ]
+      summary: Retrieve a specific build
       security:
         - bearerAuth: [ ]
       parameters:
@@ -688,6 +789,12 @@ paths:
       responses:
         '200':
           description: Build details and selected parts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -697,9 +804,10 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     put:
-      x-implementation-status: planned
+      x-implementation-status: implemented
       tags: [ Builds ]
-      summary: Planned - Modify a build (add/remove parts)
+      summary: Replace the name and selected parts of an owned build
+      description: Provide the name and exactly one of partIds or parts; an empty list removes all selected parts.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -709,9 +817,19 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildWriteRequest'
       responses:
         '200':
           description: Build updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildDetail'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
