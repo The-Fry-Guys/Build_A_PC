@@ -54,6 +54,7 @@ test.
 | PRD-16 | As a `user`, I want to `critique and rate other people's PC builds, so that I could give vital information and suggestions to bland or horrid builds`. | Given an `user`, when a `user logs into the website, and finds a build that a friend has, they could comment on the build and rate it on a scale of 1/10`. |
 | PRD-17 | As a `user`, I want to `filter parts out by category so that I could find the necessary object for a build`. | Given a `user`, when a `user logs in, they can filter through the search and pull a part from the database`. |
 | PRD-18 | As an `admin`, I want the `app/website to function properly, so I expect to see >70% test coverage when I check the code`. | Given an `admin`, when a `admin checks the codebase, they should see >70% test coverage`. |
+| PRD-19 | As a user, I want to login with Github so that I don't have to remember a standalone password. |  Given a login screen, when a user views the screen, then they will be able to use Github oauth to gain access to the app. |
 
 ## 6. API error responses
 
