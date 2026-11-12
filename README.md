@@ -64,19 +64,6 @@ Catalog results sort by ID. An empty or out-of-range page returns empty content;
 invalid paging parameters return 400 Problem Details. See `docs/openapi.yaml` for
 the implemented routes and planned authenticated endpoints.
 
-### Saved builds integration
-
-`GET /api/v1/builds` lists the authenticated user's builds at any stage, newest
-first. Build creation and deletion endpoints also exist. These routes are not usable
-by real users until authentication is integrated: it must verify credentials and set
-the Spring Security principal name to the application's user UUID. The client builder
-still uses local state and is not connected to these endpoints.
-
-The backend expects `pc_builds` and a `pc_build_parts` join table. The documented
-ERD instead describes a `build_parts` table with quantity; the actual database schema
-and part relationship must be reconciled before using build creation in production.
-Hibernate does not create or alter the remote schema.
-
 ### API tests
 
 Each running API instance uses at most 3 database connections and maintains a minimum
