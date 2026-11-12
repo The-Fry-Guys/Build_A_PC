@@ -37,7 +37,13 @@ test('admin searches real user and part records and logs out', async ({ page, re
   const partAccessibility = await new AxeBuilder({ page }).analyze();
   expect(partAccessibility.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
   await page.getByRole('link', { name: 'Home', exact: true }).click();
-  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText('Signed in as Demo Administrator', { exact: true })).toBeVisible();
+  // Inactive tabs stay mounted; select the visible Home control after navigation settles.
+  const logout = page.getByRole('button', { name: 'Log out', exact: true }).filter({ visible: true });
+  await expect(logout).toBeVisible();
+  await logout.click({ timeout: 10_000 });
+  await expect(page.getByText('Signed in as Demo Administrator', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Admin', exact: true })).toHaveCount(0);
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/$/);

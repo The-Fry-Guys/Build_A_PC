@@ -51,9 +51,12 @@ belongs in the Expo application.
 
 ## Checks for the reviewer to run
 
-Tests were written **without being executed by the implementation agent**, at the user's request.
-Passing tests, coverage values, accessibility results, and device behavior remain unverified
-until these commands are run. Static compilation does not establish that the tests pass.
+After the user authorized execution, verification on 2026-11-11 passed: 135 backend tests,
+104 Expo unit/component tests, and all 3 Playwright tests including accessibility checks.
+Backend line coverage was 94.97% overall (95.80% for the service/authorization/search gate).
+Client line coverage was 93.51% over the files configured in Jest, with 76.02% branch coverage.
+Both configured 70% coverage gates passed. TypeScript and lint passed with existing warnings.
+Manual Android device testing and the separate live Supabase connection check remain outstanding.
 
 API unit/integration tests use disposable Testcontainers Postgres and public test configuration.
 They do not read the hosted database. A running Docker daemon and Java 21 are required:

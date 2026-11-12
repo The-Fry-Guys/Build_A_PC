@@ -34,7 +34,8 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <AuthPanel />
-        <ThemedView style={styles.heroSection}>
+        {/* The decorative logo can extend over account controls on smaller screens. */}
+        <ThemedView pointerEvents="none" style={styles.heroSection}>
           <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
             Welcome to&nbsp;Expo

@@ -42,6 +42,7 @@ adding a second storage mechanism. This keeps the auth branch's token-storage po
 ## Consequences
 
 The API depends on database availability for admin permission decisions. OAuth remains owned by
-the auth implementation, including the pending Android sign-in flow. The test-only profile must
-remain isolated and must never be enabled in production. Coverage and acceptance-test results
-remain pending reviewer execution; the author was instructed not to execute tests.
+the auth implementation, including its web and Android sign-in flows. The test-only profile must
+remain isolated and must never be enabled in production. Automated tests and coverage gates
+passed after the user authorized execution; see the admin guide for measured results.
+Manual Android device verification remains outstanding.

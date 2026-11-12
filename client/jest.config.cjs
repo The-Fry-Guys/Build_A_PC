@@ -6,6 +6,9 @@ module.exports = {
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
   ],
   clearMocks: true,
+  moduleNameMapper: {
+    '\\.(css)$': '<rootDir>/jest.style-mock.cjs',
+  },
   collectCoverageFrom: [
     'src/lib/api.ts',
     'src/lib/tokenStore.web.ts',

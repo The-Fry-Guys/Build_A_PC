@@ -108,11 +108,25 @@ Hibernate does not create or alter the
 remote schema. The existing `catalog_parts` table must have `id`, `category`, `name`,
 `price`, and `created_at` columns as described in `docs/erd.md`.
 
-Collection pages contain `content`, `page`, `size`, `totalElements`, and `totalPages`.
+The catalog and admin user directory accept `q`, `page`, and `size`:
+
+- `GET /api/v1/parts?q=memory&page=0&size=10` searches public part names/categories.
+- `GET /api/v1/admin/users?q=member&page=0&size=10` searches user email/display name;
+  it requires an API bearer token and a current database role of `ADMIN`.
+- Both directories also accept an exact record UUID in `q`. Private user results use
+  `Cache-Control: no-store`.
+
+These directory pages contain `content`, `page`, `size`, `totalElements`, and `totalPages`.
 Page indexes start at 0; page size defaults to 10 and must be between 1 and 100.
 Catalog results sort by ID. An empty or out-of-range page returns empty content;
 invalid paging parameters return 400 Problem Details. See `docs/openapi.yaml` for
 the implemented routes and planned authenticated endpoints.
+
+The authenticated build controller exposes `GET /api/v1/builds`, `POST /api/v1/builds`,
+and `DELETE /api/v1/builds/{id}`. Build listing currently returns an unpaginated array.
+Creation accepts `{ "name": "My PC", "partIds": ["<catalog-part-uuid>"] }` and returns
+`id`, `name`, `parts`, and `createdAt`; deletion requires ownership and returns HTTP 204.
+Other build operations and admin mutations remain planned, as marked in OpenAPI.
 
 ### API tests
 
