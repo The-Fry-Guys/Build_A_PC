@@ -708,6 +708,7 @@ paths:
       summary: Create a PC build from catalog parts
       security:
         - bearerAuth: [ ]
+      description: Requires an authenticated application user UUID. An empty part list creates a draft.
       requestBody:
         required: true
         content:

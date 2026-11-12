@@ -26,6 +26,8 @@ class PCBuildControllerTest @Autowired constructor(
     private val mvc: MockMvc,
     private val objectMapper: ObjectMapper
 ) {
+    private val userId = UUID.fromString("11111111-1111-1111-1111-111111111111")
+    private val otherUserId = UUID.fromString("22222222-2222-2222-2222-222222222222")
 
     @MockitoBean
     private lateinit var buildRepository: PCBuildRepository
@@ -51,7 +53,7 @@ class PCBuildControllerTest @Autowired constructor(
 
         mvc.perform(
             post("/api/v1/builds")
-                .with(jwt().jwt { it.subject("google-oauth2|123") })
+                .with(jwt().jwt { it.subject(userId.toString()) })
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         ).andExpect(status().isBadRequest)
@@ -69,7 +71,7 @@ class PCBuildControllerTest @Autowired constructor(
 
         mvc.perform(
             post("/api/v1/builds")
-                .with(jwt().jwt { it.subject("google-oauth2|123") })
+                .with(jwt().jwt { it.subject(userId.toString()) })
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
@@ -87,20 +89,20 @@ class PCBuildControllerTest @Autowired constructor(
 
         mvc.perform(
             delete("/api/v1/builds/$buildId")
-                .with(jwt().jwt { it.subject("google-oauth2|123") })
+                .with(jwt().jwt { it.subject(userId.toString()) })
         ).andExpect(status().isNotFound)
     }
 
     @Test
     fun `deleteBuild returns 403 Forbidden when user attempts to delete a build they do not own`() {
         val buildId = UUID.randomUUID()
-        val existingBuild = PCBuild(id = buildId, userId = "target-user-id", name = "Target's Build")
+        val existingBuild = PCBuild(id = buildId, userId = otherUserId, name = "Target's Build")
 
         `when`(buildRepository.findById(buildId)).thenReturn(Optional.of(existingBuild))
 
         mvc.perform(
             delete("/api/v1/builds/$buildId")
-                .with(jwt().jwt { it.subject("malicious-user-id") })
+                .with(jwt().jwt { it.subject(userId.toString()) })
         ).andExpect(status().isForbidden)
 
         verify(buildRepository, never()).delete(any(PCBuild::class.java))
@@ -109,13 +111,13 @@ class PCBuildControllerTest @Autowired constructor(
     @Test
     fun `deleteBuild returns 204 No Content when user owns the build`() {
         val buildId = UUID.randomUUID()
-        val existingBuild = PCBuild(id = buildId, userId = "valid-user-id", name = "My Build")
+        val existingBuild = PCBuild(id = buildId, userId = userId, name = "My Build")
 
         `when`(buildRepository.findById(buildId)).thenReturn(Optional.of(existingBuild))
 
         mvc.perform(
             delete("/api/v1/builds/$buildId")
-                .with(jwt().jwt { it.subject("valid-user-id") })
+                .with(jwt().jwt { it.subject(userId.toString()) })
         ).andExpect(status().isNoContent)
 
         verify(buildRepository).delete(existingBuild)
