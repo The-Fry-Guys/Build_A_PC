@@ -5,8 +5,8 @@ info:
     API for managing PC builds, part compatibility, and user accounts across web and Android.
     Implemented operations include GET /, GET /actuator/health, POST /auth/github,
     GET /me, GET /parts, GET /parts/{id}, GET /admin/users, GET /builds,
-    POST /builds, and DELETE /builds/{id}. Catalog and user lists support search and pagination;
-    the current build list returns an unpaginated array.
+    POST /builds, and DELETE /builds/{id}. Catalog, user, and build lists support search
+    or pagination as documented.
     Other operations marked planned describe the planned API contract.
     Versioned API responses use application/json and errors use application/problem+json.
     Database readiness is exposed by Spring Boot Actuator at /actuator/health using
@@ -679,7 +679,14 @@ paths:
       x-implementation-status: implemented
       tags: [ Builds ]
       summary: Retrieve all saved builds for the authenticated user
-      description: Returns an unpaginated array of builds owned by the app JWT subject.
+      description: >-
+        Includes all builds belonging to the authenticated user, regardless of progress.
+        Sorted by creation time descending, then build ID ascending. Authentication is not
+        provided by the API JWT, whose subject is the application's verified user UUID.
+        The pc_builds table must exist in the configured database.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
       security:
         - bearerAuth: [ ]
       responses:
@@ -688,9 +695,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BuildResponse'
+                $ref: '#/components/schemas/BuildPage'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
