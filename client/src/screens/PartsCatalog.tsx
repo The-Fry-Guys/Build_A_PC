@@ -2,9 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Part } from '@/types/build';
 
+const CATEGORIES = ['CPU', 'GPU', 'Motherboard', 'RAM', 'Storage', 'Power Supply', 'Case', 'Cooler'];
+
 async function loadParts(): Promise<Part[]> {
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
-    const response = await fetch(`${apiUrl}/api/v1/parts`);
+    const url = category
+        ? `${apiUrl}/api/v1/parts?category=${encodeURIComponent(category)}`
+        : `${apiUrl}/api/v1/parts`;
+    const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -17,18 +22,23 @@ export default function PartsCatalog() {
     const [parts, setParts] = useState<Part[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
     /* Fetches the paginated parts catalog from the Spring Boot API.
      * It uses EXPO_PUBLIC_API_URL, complying with the security rule that public variables ship to the client while secrets stay on the server. */
-    const fetchParts = useCallback(() => loadParts()
-        .then((data) => {
-            setParts(data);
-        }).catch((err: unknown) => {
+    const fetchParts = useCallback(() => {
+        setIsLoading(true);
+        setError(null);
+        loadParts(selectedCategory)
+            .then((data) => {
+                setParts(data);
+            }).catch((err: unknown) => {
             console.error("Failed to fetch parts:", err);
             setError('Could not load parts catalog. Is the API running?');
         }).finally(() => {
             setIsLoading(false);
-        }), []);
+        });
+    }, [selectedCategory]);
 
     /* Triggers the network request to fetch the catalog data as soon as the component mounts. */
     useEffect(() => {
@@ -64,7 +74,7 @@ export default function PartsCatalog() {
     if (error) {
         return (
             <View style = {[styles.container, styles.centered]}>
-                <Text style = {styles.errorText}>{error} </Text>
+                <Text style = {styles.errorText}> {error} </Text>
                 <TouchableOpacity style = {styles.retryButton} onPress = {fetchParts}>
                     <Text style = {styles.addButtonText}> Retry </Text>
                 </TouchableOpacity>
@@ -76,12 +86,41 @@ export default function PartsCatalog() {
     return (
         <View style = {styles.container}>
             <Text style = {styles.title}> PC Parts Catalog </Text>
-            <FlatList
-                data = {parts}
-                keyExtractor = {(item) => item.part_id}
-                renderItem = {renderPartCard}
-                contentContainerStyle = {styles.list}
-            />
+            <View style = {styles.filterContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator = {false} contentContainerStyle = {styles.filterScroll}>
+                    <TouchableOpacity
+                        style = {[styles.filterPill, selectedCategory === null && styles.filterPillActive]}
+                        onPress = {() => setSelectedCategory(null)}
+                    >
+                        <Text style = {[styles.filterPillText, selectedCategory === null && styles.filterPillTextActive]}> All </Text>
+                    </TouchableOpacity>
+
+                    {CATEGORIES.map(cat => (
+                        <TouchableOpacity
+                            key = {cat}
+                            style = {[styles.filterPill, selectedCategory === cat && styles.filterPillActive]}
+                            onPress = {() => setSelectedCategory(cat)}
+                        >
+                            <Text style = {[styles.filterPillText, selectedCategory === cat && styles.filterPillTextActive]}> {cat} </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
+            {isLoading ? (
+                <View style = {[styles.container, styles.centered]}>
+                    <ActivityIndicator size = "large" color = "#1976d2" />
+                    <Text style = {styles.loadingText}> Loading catalog... </Text>
+                </View>
+            ) : (
+                <FlatList
+                    data = {parts}
+                    keyExtractor = {(item) => item.part_id}
+                    renderItem = {renderPartCard}
+                    contentContainerStyle = {styles.list}
+                    ListEmptyComponent = { <Text style = {styles.emptyText}>No parts found for this category. </Text> }
+                />
+            )}
         </View>
     );
 }
