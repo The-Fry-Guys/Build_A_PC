@@ -4,13 +4,13 @@ on:
   push:
     branches: ["main"]
   pull_request:
-    branches: ["main"]
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: API build and tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,6 +34,14 @@ jobs:
         working-directory: api
         run: ./gradlew build --no-daemon --console=plain
 
-      - name: Build API Docker image
-        working-directory: .
-        run: docker build --tag build-a-pc-api:ci api
+  docker:
+    name: Docker image
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build --file api/Dockerfile --tag build-a-pc-api:ci .

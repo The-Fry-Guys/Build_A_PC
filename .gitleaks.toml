@@ -1,0 +1,20 @@
+title = "Build A PC secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public local-only JWT fixture, never a production signing key"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "secret"
+# Gitleaks checks both the encoded value and its decoded form.
+regexes = [
+  '''^MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=?$''',
+  '''^0123456789abcdef0123456789abcdef$''',
+]
+paths = [
+  '''^compose\.e2e\.yml$''',
+  '''^api/src/test/resources/application-test\.properties$''',
+  '''^api/src/test/kotlin/com/example/demo/(AppTokenServiceTests|JwtSecurityTests|SupabaseConnectionTests)\.kt$''',
+]
