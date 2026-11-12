@@ -39,8 +39,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testImplementation 'io.rest-assured:rest-assured:6.3.0'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
 	testImplementation 'io.rest-assured:spring-mock-mvc:6.3.0'
@@ -78,6 +78,22 @@ tasks.named('jacocoTestReport') {
 		html.required = true
 	}
 }
+
+tasks.named('jacocoTestCoverageVerification') {
+	dependsOn tasks.named('test')
+	violationRules {
+		rule {
+			element = 'BUNDLE'
+			includes = ['*']
+			limit { counter = 'LINE'; minimum = 0.70 }
+		}
+	}
+	classDirectories.setFrom(sourceSets.main.output.asFileTree.matching {
+		include '**/*Service*.class', '**/GitHubIdentityClient*.class', '**/DatabaseAdminAuthorization.class', '**/DirectorySearchKt*.class'
+	})
+}
+
+tasks.named('check') { dependsOn tasks.named('jacocoTestCoverageVerification') }
 
 // Explicitly opt in: this task reads the configured Supabase database, never writes it.
 tasks.register('supabaseTest', Test) {

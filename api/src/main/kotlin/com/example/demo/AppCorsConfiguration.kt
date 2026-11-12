@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
+private const val PREFLIGHT_CACHE_SECONDS = 3600L
+
 /** Defines cross-origin browser access independently of authentication. */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(AppCorsProperties::class)
@@ -22,7 +24,7 @@ class AppCorsConfiguration {
             )
             allowedHeaders = listOf("Authorization", "Content-Type")
             allowCredentials = false
-            maxAge = 3600L
+            maxAge = PREFLIGHT_CACHE_SECONDS
         }
 
         return UrlBasedCorsConfigurationSource().apply {

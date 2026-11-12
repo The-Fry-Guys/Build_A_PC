@@ -54,7 +54,7 @@ class AccountRepositoryTests {
         )
         assertEquals(identityId, loadedIdentity.id)
         assertEquals(userId, loadedIdentity.user.id)
-        assertEquals(listOf(identityId), identities.findAllByUser_Id(userId).map { it.id })
+        assertEquals(listOf(identityId), identities.findAllByUserId(userId).map { it.id })
     }
 
     @Test
@@ -116,12 +116,12 @@ class AccountRepositoryTests {
         entityManager.clear()
 
         assertTrue(users.findById(removedId).isEmpty)
-        assertTrue(identities.findAllByUser_Id(removedId).isEmpty())
+        assertTrue(identities.findAllByUserId(removedId).isEmpty())
         assertNull(identities.findByProviderAndProviderUserId(AuthProvider.GITHUB, providerId))
         assertTrue(users.findById(retainedId).isPresent)
         assertEquals(
             listOf(retainedIdentityId),
-            identities.findAllByUser_Id(retainedId).map { it.id },
+            identities.findAllByUserId(retainedId).map { it.id },
         )
     }
 }

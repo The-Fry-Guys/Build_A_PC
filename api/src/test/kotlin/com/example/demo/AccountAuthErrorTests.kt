@@ -54,7 +54,7 @@ class AccountAuthErrorTests {
                 "unverified" -> throw EmailNotVerifiedException()
                 "github" -> throw ProviderConflictException(AuthProvider.GITHUB)
                 "google" -> throw ProviderConflictException(AuthProvider.GOOGLE)
-                else -> throw IllegalStateException("Private internal information")
+                else -> error("Private internal information")
             }
     }
 }

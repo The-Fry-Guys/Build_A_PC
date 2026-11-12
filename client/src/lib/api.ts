@@ -86,7 +86,10 @@ async function request<T>(
       headers,
       credentials: 'omit',
     });
-  } catch {
+  } catch (error) {
+    if (options.signal?.aborted) {
+      throw error;
+    }
     throw new Error(
       'Could not reach the API. Check your connection and try again.',
     );
@@ -96,7 +99,8 @@ async function request<T>(
 
   try {
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
     if (response.ok) {
       throw new ApiError(502, 'The API returned an invalid JSON response.');
     }
@@ -127,4 +131,45 @@ export function exchangeGitHubCode(
 /** Loads the current account using the stored app JWT. */
 export function getMe(): Promise<AppUser> {
   return request<AppUser>('/me', { method: 'GET' }, true);
+}
+
+/** Catalog fields shared by public browsing and the admin directory. */
+export interface CatalogPart {
+  part_id: string;
+  category: string;
+  name: string;
+  price: number | null;
+  created_at: string;
+}
+
+/** A bounded database page using the OpenAPI pagination contract. */
+export interface DirectoryPage<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+/** Parameters shared by both read-only directories. */
+export interface DirectoryRequest {
+  q: string;
+  page: number;
+  size?: number;
+  signal?: AbortSignal;
+}
+
+/** Encodes search terms so literal punctuation cannot become URL parameters. */
+function directoryPath(path: string, { q, page, size = 10 }: DirectoryRequest): string {
+  return `${path}?${new URLSearchParams({ q: q.trim(), page: String(page), size: String(size) })}`;
+}
+
+/** Loads private account data with the app bearer token and no HTTP cache. */
+export function getAdminUsers(input: DirectoryRequest): Promise<DirectoryPage<AppUser>> {
+  return request(directoryPath('/admin/users', input), { method: 'GET', cache: 'no-store', signal: input.signal }, true);
+}
+
+/** Searches the public catalog without attaching private account credentials. */
+export function getCatalogParts(input: DirectoryRequest): Promise<DirectoryPage<CatalogPart>> {
+  return request(directoryPath('/parts', input), { method: 'GET', signal: input.signal }, false);
 }

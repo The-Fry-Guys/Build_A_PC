@@ -9,8 +9,12 @@ on:
 permissions:
   contents: read
 
+env:
+  EXPO_NO_DOTENV: "1"
+
 jobs:
   build:
+    name: Expo typecheck and exports
     runs-on: ubuntu-latest
     defaults:
       run:

@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration
 /** Complements the handwritten contract with SpringDoc's implemented-route view. */
 @Configuration(proxyBeanMethods = false)
 class OpenApiConfiguration {
+    /** Describes the implemented API and its application JWT authentication scheme. */
     @Bean
     fun implementedApi(): OpenAPI = OpenAPI()
         .info(

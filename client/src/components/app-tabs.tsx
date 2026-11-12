@@ -2,8 +2,10 @@ import { NativeTabs } from 'expo-router/native-tabs';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useSession } from '@/auth/session-provider';
 
 export default function AppTabs() {
+  const { user } = useSession();
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
@@ -26,6 +28,9 @@ export default function AppTabs() {
           src={require('@/assets/images/tabIcons/explore.png')}
           renderingMode="template"
         />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="admin" hidden={user?.role !== 'ADMIN'}>
+        <NativeTabs.Trigger.Label>Admin</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

@@ -1,6 +1,9 @@
-# Run from the api folder: docker compose up --build
+# Run from the api folder: docker compose --env-file ../.env up --build
 #
-# Set LOCAL_DB_PASSWORD in the shell before starting the local development stack.
+# Still needed:
+# TODO: move credentials to a .env file / secrets manager (change-me is a placeholder)
+# TODO: add application-prod.properties and a prod compose file (don't expose 5432 in prod)
+# TODO: React Native app must call http://<computer-LAN-IP>:8080 on a physical device, not localhost
 services:
   expo:
     build:
@@ -26,8 +29,8 @@ services:
       - "8080:8080"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
-      SPRING_DATASOURCE_USERNAME: buildapc
-      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD for the local database}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:?required}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?required}
       # The SQL initialization script owns schema creation on fresh volumes.
       SPRING_JPA_HIBERNATE_DDL_AUTO: none
     depends_on:
@@ -38,8 +41,8 @@ services:
     image: postgres:16
     environment:
       POSTGRES_DB: buildapc
-      POSTGRES_USER: buildapc
-      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD for the local database}
+      POSTGRES_USER: ${DB_USER:?required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?required}
     ports:
       - "5432:5432"
     volumes:

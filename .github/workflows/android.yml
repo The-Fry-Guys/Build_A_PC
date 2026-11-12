@@ -4,14 +4,17 @@ on:
   push:
     branches: ["main"]
   pull_request:
-    branches: ["main"]
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: API build and tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
 
     steps:
       - name: Check out repository
@@ -25,11 +28,20 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for Gradle wrapper
-        run: chmod +x api/gradlew
+        run: chmod +x gradlew
 
       - name: Build and test API
         working-directory: api
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build --no-daemon --console=plain
 
-      - name: Build API Docker image
+  docker:
+    name: Docker image
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build API image
         run: docker build --file api/Dockerfile --tag build-a-pc-api:ci .

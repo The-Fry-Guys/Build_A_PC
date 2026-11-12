@@ -21,17 +21,12 @@ import org.springframework.test.web.servlet.post
 import java.util.UUID
 
 /** Verifies API error status codes, Problem Details fields, and response content types. */
+@MockitoBean(types = [UserRepository::class, JdbcTemplate::class, JwtDecoder::class])
 @WebMvcTest(CatalogPartController::class, HelloController::class)
 @Import(SecurityConfig::class)
 class ApiErrorContractTests @Autowired constructor(private val mvc: MockMvc) {
     @MockitoBean
     private lateinit var repository: CatalogPartRepository
-
-    @MockitoBean
-    private lateinit var jdbcTemplate: JdbcTemplate
-
-    @MockitoBean
-    private lateinit var jwtDecoder: JwtDecoder
 
     /** Verifies that a catalog query failure returns sanitized HTTP 500 Problem Details. */
     @Test
@@ -69,14 +64,14 @@ class ApiErrorContractTests @Autowired constructor(private val mvc: MockMvc) {
     /** Verifies that unsupported HTTP methods preserve HTTP 405 and the Allow header. */
     @Test
     fun `unsupported method returns method not allowed`() {
-        mvc.post("/api/v1/health").andExpect {
+        mvc.post("/api/v1/").andExpect {
             status { isMethodNotAllowed() }
             header { string("Allow", containsString("GET")) }
             content { contentTypeCompatibleWith("application/problem+json") }
             jsonPath("$.type") { value("about:blank") }
             jsonPath("$.title") { value("Method Not Allowed") }
             jsonPath("$.status") { value(405) }
-            jsonPath("$.instance") { value("/api/v1/health") }
+            jsonPath("$.instance") { value("/api/v1/") }
         }
     }
 

@@ -121,12 +121,13 @@ class ApiExceptionHandler {
             .body(problem)
     }
 
-    private fun response(problem: ProblemDetail): ResponseEntity<ProblemDetail> =
-        ResponseEntity.status(problem.status).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(problem)
-
     private companion object {
         val logger = LoggerFactory.getLogger(ApiExceptionHandler::class.java)
     }
 }
+
+/** Wraps Problem Details in the documented error response content type. */
+private fun response(problem: ProblemDetail): ResponseEntity<ProblemDetail> =
+    ResponseEntity.status(problem.status).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(problem)
 
 class ResourceNotFoundException : RuntimeException()

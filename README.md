@@ -1,9 +1,15 @@
 # Build_A_PC
 Project 3 for CST438 Software Engineering
 
+## Project documentation
+
+[Architecture](docs/architecture.md) · [Decisions](docs/adr/) ·
+[Security](docs/security.md) · [Runbook](docs/runbook.md) ·
+[Demo](docs/demo.md) · [Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
+
 ## How to Setup Expo for development
 
-- Install Node.js **22.13+ within 22.x**, npm, and **Java 21**.
+- Install Node.js **24.x** (matching Expo CI), npm, and **Java 21**.
 - Windows: use Git Bash for `load_env.sh`; use your Windows Android SDK.
 - From `client/`, install dependencies once (and after lockfile changes):
 
@@ -83,7 +89,8 @@ not production or physical phones.
   - Use Java 21 and configure the root `.env` with database, JWT, and OAuth settings.
   - Run `bash load_env.sh` to load the environment and start the API.
   - Run `curl -i http://localhost:8080/api/v1/` for API information.
-  - Run `curl -i http://localhost:8080/api/v1/health` for database readiness (200 UP or 503 DOWN).
+  - Run `curl -i http://localhost:8080/actuator/health` for database readiness (200 UP or 503 DOWN).
+  - [Admin tools (PRD-6)](docs/admin-tools.md): provisioning, supported web/Android behavior, isolated test setup, and commands for reviewers.
   - Run `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` for a page of database parts.
   - Run `curl -i http://localhost:8080/api/v1/parts/{id}` for one part by UUID.
 
@@ -107,12 +114,27 @@ Hibernate does not create or alter the
 remote schema. The existing `catalog_parts` table must have `id`, `category`, `name`,
 `price`, and `created_at` columns as described in `docs/erd.md`.
 
-Collection pages contain `content`, `page`, `size`, `totalElements`, and `totalPages`.
+The catalog and admin user directory accept `q`, `page`, and `size`:
+
+- `GET /api/v1/parts?q=memory&page=0&size=10` searches public part names/categories.
+- `GET /api/v1/admin/users?q=member&page=0&size=10` searches user email/display name;
+  it requires an API bearer token and a current database role of `ADMIN`.
+- Both directories also accept an exact record UUID in `q`. Private user results use
+  `Cache-Control: no-store`.
+
+These directory pages contain `content`, `page`, `size`, `totalElements`, and `totalPages`.
 Page indexes start at 0; page size defaults to 10 and must be between 1 and 100.
 Catalog results sort by ID. An empty or out-of-range page returns empty content;
 invalid paging parameters return 400 Problem Details. See `docs/openapi.yaml` for
 the implemented routes and planned authenticated endpoints.
 
+The authenticated build controller exposes `GET /api/v1/builds`, `POST /api/v1/builds`,
+`GET /api/v1/builds/{id}`, `PUT /api/v1/builds/{id}`, and `DELETE /api/v1/builds/{id}`.
+Build listing is paginated with `page` and `size`,
+and includes the authenticated user's builds at any stage, newest first.
+Creation and replacement accept a build name and selected part IDs or quantities; detail
+responses include the selected parts. Updates and deletion require ownership.
+Admin mutations remain planned, as marked in OpenAPI.
 ### API tests
 
 Each running API instance uses at most 3 database connections and maintains a minimum

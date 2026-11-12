@@ -67,23 +67,30 @@ class CatalogRoutesTests @Autowired constructor(
         }
     }
 
-    /** Verifies that a successful database query reports healthy readiness. */
+    /** Verifies that Actuator reports healthy database readiness without exposing details. */
     @Test
     fun `health checks the database`() {
-        mvc.get("/api/v1/health").andExpect {
+        mvc.get("/actuator/health").andExpect {
             status { isOk() }
             jsonPath("$.status") { value("UP") }
-            jsonPath("$.database") { value("UP") }
+            jsonPath("$.components") { doesNotExist() }
         }
     }
 
     /** Verifies that every implemented GET route returns the documented JSON content type. */
     @ParameterizedTest
-    @ValueSource(strings = ["/api/v1/", "/api/v1/health", "/api/v1/parts", "/api/v1/parts/11111111-1111-1111-1111-111111111111"])
-    fun `successful routes return application json`(path: String) {
+    @ValueSource(strings = [
+        "/api/v1/", "/actuator/health", "/api/v1/parts", "/api/v1/parts/11111111-1111-1111-1111-111111111111",
+    ])
+    fun `successful routes return their documented json content type`(path: String) {
         mvc.get(path).andExpect {
             status { isOk() }
-            content { contentTypeCompatibleWith("application/json") }
+            content {
+                contentTypeCompatibleWith(
+                    if (path == "/actuator/health") "application/vnd.spring-boot.actuator.v3+json"
+                    else "application/json",
+                )
+            }
         }
     }
 
@@ -154,7 +161,10 @@ class CatalogRoutesTests @Autowired constructor(
 
     /** Verifies that invalid pagination values return HTTP 400 Problem Details. */
     @ParameterizedTest
-    @ValueSource(strings = ["page=-1", "size=0", "size=-1", "size=101", "page=abc", "size=abc", "page=2147483647&size=100", "page=2147483648"])
+    @ValueSource(strings = [
+        "page=-1", "size=0", "size=-1", "size=101", "page=abc", "size=abc",
+        "page=2147483647&size=100", "page=2147483648",
+    ])
     fun `invalid pagination returns problem details`(query: String) {
         mvc.get("/api/v1/parts?$query").andExpect {
             status { isBadRequest() }

@@ -3,13 +3,14 @@ info:
   title: Build A PC API
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
-    Implemented operations under /api/v1 are GET /, GET /health, GET /parts,
-    GET /parts/{id}, POST /auth/github, GET /me, GET /builds, POST /builds,
-    GET /builds/{id}, PUT /builds/{id}, and DELETE /builds/{id}.
-    Build routes require an app JWT whose subject is the authenticated user's UUID.
-    Other operations are explicitly marked planned and are not implemented.
-    Successful responses use application/json. Application errors use application/problem+json,
-    except database readiness failures, which return an ApiHealth JSON body with HTTP 503.
+    Implemented operations include GET /, GET /actuator/health, POST /auth/github,
+    GET /me, GET /parts, GET /parts/{id}, GET /admin/users, GET /builds,
+    POST /builds, GET /builds/{id}, PUT /builds/{id}, and DELETE /builds/{id}.
+    Catalog, user, and build lists support search or pagination as documented.
+    Other operations marked planned describe the planned API contract.
+    Versioned API responses use application/json and errors use application/problem+json.
+    Database readiness is exposed by Spring Boot Actuator at /actuator/health using
+    application/vnd.spring-boot.actuator.v3+json.
     Routing errors return HTTP 404 or HTTP 405 Problem Details; 405 includes an Allow header.
     Authentication and role checks can return 401 or 403 before routing, including
     for planned operations. An invalid Bearer token can produce 401 even on public routes.
@@ -38,18 +39,6 @@ components:
         version:
           type: string
           example: v1
-
-    ApiHealth:
-      type: object
-      description: Readiness determined by executing SELECT 1 against the configured database.
-      required: [status, database]
-      properties:
-        status:
-          type: string
-          enum: [UP, DOWN]
-        database:
-          type: string
-          enum: [UP, DOWN]
 
     PageMetadata:
       type: object
@@ -109,7 +98,7 @@ components:
 
     User:
       type: object
-      description: Public account fields returned by GitHub login and GET /me.
+      description: Public account fields returned by GitHub login, GET /me, and admin user search.
       required: [id, email, display_name, role, created_at]
       properties:
         id:
@@ -223,6 +212,37 @@ components:
           type: string
           format: date-time
 
+    CreateBuildRequest:
+      type: object
+      required: [name, partIds]
+      properties:
+        name:
+          type: string
+        partIds:
+          type: array
+          description: Catalog part UUIDs; the controller rejects requests when not all entries resolve.
+          items:
+            type: string
+            format: uuid
+
+    BuildResponse:
+      type: object
+      description: Current build controller response; outer field names use camelCase.
+      required: [id, name, parts, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Part'
+        createdAt:
+          type: string
+          format: date-time
+
     BuildCompatibility:
       type: object
       properties:
@@ -330,6 +350,16 @@ components:
           type: string
           description: Short-lived JWT.
   parameters:
+    Search:
+      name: q
+      in: query
+      required: false
+      description: >-
+        Trimmed, case-insensitive substring search. Percent and underscore are literal
+        characters. Blank or omitted values list all records. A valid UUID also matches
+        an exact record ID. User lists search email/display_name; parts search name/category.
+      schema:
+        type: string
     Page:
       name: page
       in: query
@@ -441,28 +471,37 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /health:
+  /actuator/health:
+    servers:
+      - url: /
+        description: Spring Boot Actuator endpoint at the application root
     get:
       x-implementation-status: implemented
       tags: [System]
-      summary: Check database readiness
+      summary: Check application and database health
       responses:
         '200':
-          description: Database query succeeded; status and database are UP.
+          description: The application and configured database are healthy.
           content:
-            application/json:
+            application/vnd.spring-boot.actuator.v3+json:
               schema:
-                $ref: '#/components/schemas/ApiHealth'
-        '406':
-          $ref: '#/components/responses/NotAcceptable'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [UP]
         '503':
-          description: Database query failed; status and database are DOWN. Connection details are never returned.
+          description: The application or configured database is unhealthy.
           content:
-            application/json:
+            application/vnd.spring-boot.actuator.v3+json:
               schema:
-                $ref: '#/components/schemas/ApiHealth'
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [DOWN]
 
   /auth/github:
     post:
@@ -604,8 +643,9 @@ paths:
       x-implementation-status: implemented
       tags: [ Parts ]
       summary: Get list of general PC parts
-      description: Queries the catalog database, ordered by unique part ID for consistent pagination.
+      description: Public database search over part name/category, ordered by ID for consistent pagination.
       parameters:
+        - $ref: '#/components/parameters/Search'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       responses:
@@ -700,8 +740,9 @@ paths:
       summary: Retrieve all saved builds for the authenticated user
       description: >-
         Includes all builds belonging to the authenticated user, regardless of progress.
-        Sorted by creation time descending, then build ID ascending. The app JWT subject
-        supplies the authenticated user UUID.
+        Sorted by creation time descending, then build ID ascending. Authentication is not
+        provided by the API JWT, whose subject is the application's verified user UUID.
+        The pc_builds table must exist in the configured database.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -709,7 +750,7 @@ paths:
         - bearerAuth: [ ]
       responses:
         '200':
-          description: A page of user builds
+          description: All builds owned by the authenticated user
           content:
             application/json:
               schema:
@@ -723,7 +764,7 @@ paths:
     post:
       x-implementation-status: implemented
       tags: [ Builds ]
-      summary: Initialize a new PC build
+      summary: Create a PC build from catalog parts
       security:
         - bearerAuth: [ ]
       description: Requires an authenticated application user UUID. An empty part list creates a draft.
@@ -749,8 +790,10 @@ paths:
 
   /builds/{id}:
     delete:
+      x-implementation-status: implemented
       tags: [ Builds ]
-      summary: Delete a build owned by the authenticated user
+      summary: Delete an owned PC build
+      description: Requires ownership; an existing build owned by another user returns 403.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -762,7 +805,7 @@ paths:
             format: uuid
       responses:
         '204':
-          description: Build deleted
+          description: Build deleted; no response body
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -776,7 +819,7 @@ paths:
     get:
       x-implementation-status: implemented
       tags: [ Builds ]
-      summary: Retrieve a specific build
+      summary: Planned - Retrieve a specific build
       security:
         - bearerAuth: [ ]
       parameters:
@@ -873,10 +916,15 @@ paths:
 
   /admin/users:
     get:
-      x-implementation-status: planned
+      x-implementation-status: implemented
       tags: [ Admin ]
-      summary: Planned - View and search user data
+      summary: View and search user data
+      description: >-
+        Requires a valid app JWT and an existing user whose current database role is ADMIN.
+        The JWT subject identifies the user; a role copied into the JWT does not grant access
+        after database demotion. Returns approved profile fields only, ordered by ID.
       parameters:
+        - $ref: '#/components/parameters/Search'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
       security:
@@ -884,6 +932,11 @@ paths:
       responses:
         '200':
           description: A page of users (Admin only)
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
           content:
             application/json:
               schema:

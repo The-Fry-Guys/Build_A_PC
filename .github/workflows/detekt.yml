@@ -44,7 +44,7 @@ jobs:
         run: |
           set +e
           java -jar "$RUNNER_TEMP/detekt.jar" \
-            --input api/src/main/kotlin \
+            --input api/src \
             --base-path "$GITHUB_WORKSPACE" \
             --report "sarif:${GITHUB_WORKSPACE}/detekt.sarif.json"
           status=$?
