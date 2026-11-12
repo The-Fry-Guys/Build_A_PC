@@ -1,0 +1,56 @@
+name: API and Expo admin checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['api/**', 'client/**', 'docs/openapi.yaml', '.dockerignore', 'compose.e2e.yml', '.github/workflows/admin.yml']
+  push:
+    branches: [main]
+    paths: ['api/**', 'client/**', 'docs/openapi.yaml', '.dockerignore', 'compose.e2e.yml', '.github/workflows/admin.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  api-and-client:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_NO_DOTENV: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - name: API tests and service coverage
+        working-directory: api
+        run: ./gradlew build --no-daemon --console=plain
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci --ignore-scripts
+      - name: Client lint, types, and coverage
+        working-directory: client
+        run: |
+          npx expo lint
+          npx tsc --noEmit
+          npm run test:coverage -- --runInBand
+      - name: Start isolated acceptance stack
+        run: docker compose --env-file /dev/null -f compose.e2e.yml up --build -d
+      - name: Install test browser
+        working-directory: client
+        run: npx playwright install --with-deps chromium
+      - name: Admin web acceptance and accessibility
+        working-directory: client
+        run: npm run test:e2e
+      - name: Collect API diagnostics
+        if: failure()
+        run: docker compose --env-file /dev/null -f compose.e2e.yml logs --no-color
+      - name: Remove isolated stack
+        if: always()
+        run: docker compose --env-file /dev/null -f compose.e2e.yml down --volumes
