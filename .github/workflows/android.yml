@@ -28,7 +28,7 @@ jobs:
           cache: gradle
 
       - name: Grant execute permission for Gradle wrapper
-        run: chmod +x api/gradlew
+        run: chmod +x gradlew
 
       - name: Build and test API
         working-directory: api
