@@ -93,3 +93,6 @@ errors may also include the invalid field and a message.
 | `11/10` | `#37` | Connect Springboot to Supabase |
 | `11/10` | `#38` | Updated SpringBoot and Supabase Connection |
 | `11/11` | `#39` | Aalex/compatibility redo |
+| `11/11` | `#41` | Austin/GitHub oauth |
+| `11/11` | `#42` | Basic Admin Tools |
+| `11/11` | `#43` | Fernandov/prd4 |
