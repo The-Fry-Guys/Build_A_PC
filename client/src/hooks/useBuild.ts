@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import { Part } from '@/types/build';
-import { checkCompatibility } from '@/utils/compatibility';
-import { BuildCompatibility } from '@/types/build';
 
 /* Manages the local state for a user's PC build, allowing them to view parts and construct a pc to. */
 export function useBuild() {
@@ -32,12 +30,6 @@ export function useBuild() {
         return selectedParts.reduce((total, part) => total + part.price, 0);
     };
 
-    /* Evaluates the current parts to determine if they are compatible.
-     * This directly satisfies the PRD-3 acceptance criterion to view whether their current parts are compatible or not, and which part causes incompatability. */
-    const getCompatibility = (): BuildCompatibility => {
-        return checkCompatibility(selectedParts);
-    };
-
     /* Exposes the build state and modification functions to the client UI screens. */
     return {
         selectedParts,
@@ -47,6 +39,5 @@ export function useBuild() {
         removePart,
         clearBuild,
         getTotalPrice,
-        getCompatibility,
     };
 }
