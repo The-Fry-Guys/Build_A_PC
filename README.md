@@ -64,6 +64,14 @@ Catalog results sort by ID. An empty or out-of-range page returns empty content;
 invalid paging parameters return 400 Problem Details. See `docs/openapi.yaml` for
 the implemented routes and planned authenticated endpoints.
 
+### Saved builds integration
+
+`GET /api/v1/builds` lists the authenticated user's builds at any stage, newest
+first. It requires the `pc_builds` table described in `docs/erd.md`. It is not
+usable by real users until sign-in is implemented: the authentication integration
+must verify the user's credentials and set the Spring Security principal name to
+that user's application UUID. Build creation and the client screen are also pending.
+
 ### API tests
 
 Each running API instance uses at most 3 database connections and maintains a minimum

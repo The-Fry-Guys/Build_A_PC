@@ -3,7 +3,8 @@ info:
   title: Build A PC API
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
-    Currently implemented operations are GET /, GET /health, GET /parts, and GET /parts/{id}.
+    Currently implemented operations are GET /, GET /health, GET /parts, GET /parts/{id},
+    and GET /builds. GET /builds requires the pending authentication integration.
     Other operations describe the planned API contract.
     Successful responses use application/json. Errors use application/problem+json,
     except database readiness failures, which return an ApiHealth JSON body with HTTP 503.
@@ -534,6 +535,11 @@ paths:
     get:
       tags: [ Builds ]
       summary: Retrieve all saved builds for the authenticated user
+      description: >-
+        Includes all builds belonging to the authenticated user, regardless of progress.
+        Sorted by creation time descending, then build ID ascending. Authentication is not
+        implemented yet; its integration must set the principal name to the application's
+        verified user UUID. The pc_builds table must exist in the configured database.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
