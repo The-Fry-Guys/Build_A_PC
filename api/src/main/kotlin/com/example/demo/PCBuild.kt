@@ -18,7 +18,7 @@ class PCBuild(
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "user_id", nullable = false)
-    val userId: String = "",
+    val userId: UUID,
 
     @Column(nullable = false)
     val name: String = "",

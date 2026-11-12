@@ -4,7 +4,8 @@ info:
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
     Currently implemented operations are GET /, GET /health, GET /parts, GET /parts/{id},
-    and GET /builds. GET /builds requires the pending authentication integration.
+    GET /builds, POST /builds and DELETE /builds/{id}. Build routes require the
+    pending authentication integration and database schema reconciliation.
     Other operations describe the planned API contract.
     Successful responses use application/json. Errors use application/problem+json,
     except database readiness failures, which return an ApiHealth JSON body with HTTP 503.
@@ -563,6 +564,24 @@ paths:
       summary: Initialize a new PC build
       security:
         - bearerAuth: [ ]
+      description: Requires an authenticated application user UUID. An empty part list creates a draft.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, partIds]
+              properties:
+                name:
+                  type: string
+                  description: Nonblank build name.
+                partIds:
+                  type: array
+                  uniqueItems: true
+                  items:
+                    type: string
+                    format: uuid
       responses:
         '201':
           description: Build created
@@ -574,6 +593,31 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   /builds/{id}:
+    delete:
+      tags: [ Builds ]
+      summary: Delete a build owned by the authenticated user
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Build deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     get:
       tags: [ Builds ]
       summary: Retrieve a specific build

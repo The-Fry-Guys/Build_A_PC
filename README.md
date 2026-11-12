@@ -67,10 +67,15 @@ the implemented routes and planned authenticated endpoints.
 ### Saved builds integration
 
 `GET /api/v1/builds` lists the authenticated user's builds at any stage, newest
-first. It requires the `pc_builds` table described in `docs/erd.md`. It is not
-usable by real users until sign-in is implemented: the authentication integration
-must verify the user's credentials and set the Spring Security principal name to
-that user's application UUID. Build creation and the client screen are also pending.
+first. Build creation and deletion endpoints also exist. These routes are not usable
+by real users until authentication is integrated: it must verify credentials and set
+the Spring Security principal name to the application's user UUID. The client builder
+still uses local state and is not connected to these endpoints.
+
+The backend expects `pc_builds` and a `pc_build_parts` join table. The documented
+ERD instead describes a `build_parts` table with quantity; the actual database schema
+and part relationship must be reconciled before using build creation in production.
+Hibernate does not create or alter the remote schema.
 
 ### API tests
 
