@@ -8,6 +8,7 @@ import jakarta.persistence.EntityManager
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.context.annotation.Import
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -22,21 +23,31 @@ import java.util.UUID
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(PostgresTestConfiguration::class)
 @Transactional
 class PcBuildRoutesTests @Autowired constructor(
     private val mvc: MockMvc,
     private val repository: PCBuildRepository,
     private val partRepository: CatalogPartRepository,
+    private val userRepository: UserRepository,
     private val entityManager: EntityManager,
     private val objectMapper: tools.jackson.databind.ObjectMapper,
 ) {
-    private val owner = UUID.fromString("11111111-1111-1111-1111-111111111111")
-    private val otherUser = UUID.fromString("22222222-2222-2222-2222-222222222222")
+    private lateinit var owner: UUID
+    private lateinit var otherUser: UUID
     private val olderBuild = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     private val newerBuild = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 
     @BeforeEach
     fun seedBuilds() {
+        val users = userRepository.saveAllAndFlush(
+            listOf(
+                User(email = "${UUID.randomUUID()}@example.test"),
+                User(email = "${UUID.randomUUID()}@example.test"),
+            ),
+        )
+        owner = requireNotNull(users[0].id)
+        otherUser = requireNotNull(users[1].id)
         repository.deleteAll()
         repository.saveAllAndFlush(
             listOf(
@@ -157,8 +168,8 @@ class PcBuildRoutesTests @Autowired constructor(
 
     @Test
     fun `build parts and name persist across create update and reload`() {
-        val first = partRepository.saveAndFlush(CatalogPart(category = "CPU", name = "First"))
-        val second = partRepository.saveAndFlush(CatalogPart(category = "GPU", name = "Second"))
+        val first = partRepository.saveAndFlush(CatalogPart(category = "cpu", name = "First"))
+        val second = partRepository.saveAndFlush(CatalogPart(category = "video-card", name = "Second"))
         val result = mvc.post("/api/v1/builds") {
             with(user(owner.toString()))
             contentType = org.springframework.http.MediaType.APPLICATION_JSON
@@ -210,7 +221,7 @@ class PcBuildRoutesTests @Autowired constructor(
 
     @Test
     fun `quantities persist through creation replacement and deletion`() {
-        val part = partRepository.saveAndFlush(CatalogPart(category = "Memory", name = "Memory"))
+        val part = partRepository.saveAndFlush(CatalogPart(category = "memory", name = "Memory"))
         val result = mvc.post("/api/v1/builds") {
             with(user(owner.toString()))
             contentType = org.springframework.http.MediaType.APPLICATION_JSON
