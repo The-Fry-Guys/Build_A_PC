@@ -1,6 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Part } from '@/types/build';
+
+async function loadParts(): Promise<Part[]> {
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
+    const response = await fetch(`${apiUrl}/api/v1/parts`);
+    if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.content;
+}
 
 /* Displays a list of available PC parts fetched from the API. */
 export default function PartsCatalog() {
@@ -8,29 +18,22 @@ export default function PartsCatalog() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    /* Triggers the network request to fetch the catalog data as soon as the component mounts. */
-    useEffect(() => {
-        fetchParts();
-    }, []);
-
     /* Fetches the paginated parts catalog from the Spring Boot API.
      * It uses EXPO_PUBLIC_API_URL, complying with the security rule that public variables ship to the client while secrets stay on the server. */
-    const fetchParts = async () => {
-        try {
-            const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
-            const response = await fetch(`${apiUrl}/api/v1/parts`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            setParts(data.content);
-        } catch (err) {
+    const fetchParts = useCallback(() => loadParts()
+        .then((data) => {
+            setParts(data);
+        }).catch((err: unknown) => {
             console.error("Failed to fetch parts:", err);
             setError('Could not load parts catalog. Is the API running?');
-        } finally {
+        }).finally(() => {
             setIsLoading(false);
-        }
-    };
+        }), []);
+
+    /* Triggers the network request to fetch the catalog data as soon as the component mounts. */
+    useEffect(() => {
+        void fetchParts();
+    }, [fetchParts]);
 
     /* Renders an individual part card and the button used to add it to the active build. */
     const renderPartCard = ({ item }: { item: Part }) => (

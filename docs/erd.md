@@ -1,3 +1,82 @@
+# Database schema
+
+This document reflects the team's latest Supabase `public` schema dump, committed
+as `api/src/main/resources/db/migration/V1__initial_schema.sql`. It supersedes the
+earlier context-only export. This is a description of that snapshot, not a live
+database inspection. The SQL file initializes fresh local/test databases; Flyway
+is not used and the file must not be replayed against the existing hosted schema.
+
+## Constraints, defaults, and nullable fields
+
+- All 30 tables are in `public`. Every primary key is non-null. The five core
+  tables use UUID `id` keys defaulting to `gen_random_uuid()`; each category detail
+  table uses `part_id` as both its primary key and a foreign key to `catalog_parts`.
+- `users`: `email` is non-null and unique; `display_name` is nullable; `role` is
+  non-null and defaults to `USER`; `created_at` is non-null and defaults to `now()`.
+- `identities`: `user_id`, `provider`, and `provider_user_id` are non-null;
+  `created_at` is non-null and defaults to `now()`. The pair
+  `(provider, provider_user_id)` is unique.
+- `pc_builds`: `user_id` and `name` are non-null; `created_at` is non-null and
+  defaults to `now()`.
+- `catalog_parts`: `category` and `name` are non-null; `price` is nullable
+  `numeric(10,2)`; `created_at` is non-null and defaults to `now()`.
+- `build_parts`: `build_id` and `catalog_part_id` are non-null and their pair is
+  unique; `quantity` is non-null, defaults to `1`, and must be greater than zero.
+- Every non-key column in the category detail tables is nullable.
+  `memory_details.price_per_gb` and `internal_hard_drive_details.price_per_gb`
+  use `numeric(10,3)`; other detail-table numeric fields have no declared precision.
+- `provider` and `role` are plain text without declared value checks. Application
+  values such as `GITHUB`/`GOOGLE` and `USER`/`ADMIN` are not database-enforced enums.
+- Row-level security is enabled on all 30 tables; the dump defines no policies.
+  Table owners normally bypass RLS. A restricted API database role needs an
+  appropriate access policy; RLS does not replace API authorization checks.
+
+### Foreign-key deletion behavior
+
+- Deleting a user cascades to their identities and PC builds; deleting a build
+  cascades to its selected `build_parts`. Account deletion endpoints are not yet
+  implemented.
+- Deleting a catalog part cascades to its `case_details`, `cpu_cooler_details`,
+  `cpu_details`, `internal_hard_drive_details`, `memory_details`,
+  `motherboard_details`, `power_supply_details`, and `video_card_details` rows.
+- All remaining foreign keys use the default `NO ACTION`. In particular, build
+  selections and the other category detail rows can block catalog-part deletion.
+
+There are explicit indexes on `build_parts.build_id`,
+`build_parts.catalog_part_id`, `catalog_parts.category`, and `pc_builds.user_id`,
+in addition to indexes backing primary keys and unique constraints.
+
+`catalog_parts.category` is restricted to these exact values:
+
+```text
+case-accessory, case-fan, case, cpu-cooler, cpu, external-hard-drive,
+fan-controller, headphones, internal-hard-drive, keyboard, memory, monitor,
+motherboard, mouse, optical-drive, os, power-supply, sound-card, speakers,
+thermal-paste, ups, video-card, webcam, wired-network-card, wireless-network-card
+```
+
+## GitHub OAuth persistence mapping
+
+- `User` and `Identity` map the existing `public` tables; repositories provide
+  email lookup, provider identity lookup (with its user), and identities by user ID.
+- Application inserts generate UUIDs through JPA and supply creation timestamps;
+  new users default to `USER`. Database defaults remain available for SQL inserts
+  that omit those columns. IDs are null until JPA persists the entities.
+- The identity's user association is lazy by default and has no JPA removal cascade
+  toward the user. Deletion from user to identities is enforced by the database.
+- Existing identity uniqueness and deletion constraints meet the auth appendix;
+  no schema changes are needed for these mappings.
+- GitHub identity/email verification, transactional account creation, app JWTs,
+  and `/api/v1/auth/github` and `/api/v1/me` are implemented. Existing identities
+  reuse their user; conflicting verified emails return 409 without account linking.
+- Catalog persistence maps nullable `price`, includes `created_at`, and uses the
+  lowercase category values listed above. Local/test databases use the committed
+  schema; production remains hosted in Supabase.
+
+See [the GitHub OAuth sequence](auth-sequence.md) for the implemented sign-in flow.
+
+## Entity relationship diagram
+
 ```mermaid
 erDiagram
     USERS {

@@ -34,9 +34,8 @@ export default function AppTabs() {
   );
 }
 
-type TabButtonProps = Omit<TabTriggerSlotProps, 'ref'> & {
-  ref?: ComponentProps<typeof Pressable>['ref'];
-};
+// Router's slot ref uses the component type; Pressable expects its instance type.
+type TabButtonProps = Omit<TabTriggerSlotProps, 'ref'> & Pick<ComponentProps<typeof Pressable>, 'ref'>;
 
 export function TabButton({ children, isFocused, ...props }: TabButtonProps) {
   return (

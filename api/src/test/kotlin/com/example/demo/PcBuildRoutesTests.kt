@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import jakarta.persistence.EntityManager
+import org.springframework.context.annotation.Import
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -22,10 +24,12 @@ import java.util.UUID
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(PostgresTestConfiguration::class)
 @Transactional
 class PcBuildRoutesTests @Autowired constructor(
     private val mvc: MockMvc,
     private val repository: PCBuildRepository,
+    private val jdbc: JdbcTemplate,
     private val partRepository: CatalogPartRepository,
     private val entityManager: EntityManager,
     private val objectMapper: tools.jackson.databind.ObjectMapper,
@@ -37,6 +41,13 @@ class PcBuildRoutesTests @Autowired constructor(
 
     @BeforeEach
     fun seedBuilds() {
+        for (id in listOf(owner, otherUser)) {
+            jdbc.update(
+                "insert into public.users (id, email) values (?, ?) on conflict (id) do nothing",
+                id,
+                "$id@build-routes.test",
+            )
+        }
         repository.deleteAll()
         repository.saveAllAndFlush(
             listOf(
@@ -157,8 +168,8 @@ class PcBuildRoutesTests @Autowired constructor(
 
     @Test
     fun `build parts and name persist across create update and reload`() {
-        val first = partRepository.saveAndFlush(CatalogPart(category = "CPU", name = "First"))
-        val second = partRepository.saveAndFlush(CatalogPart(category = "GPU", name = "Second"))
+        val first = partRepository.saveAndFlush(CatalogPart(category = "cpu", name = "First"))
+        val second = partRepository.saveAndFlush(CatalogPart(category = "video-card", name = "Second"))
         val result = mvc.post("/api/v1/builds") {
             with(user(owner.toString()))
             contentType = org.springframework.http.MediaType.APPLICATION_JSON
@@ -210,7 +221,7 @@ class PcBuildRoutesTests @Autowired constructor(
 
     @Test
     fun `quantities persist through creation replacement and deletion`() {
-        val part = partRepository.saveAndFlush(CatalogPart(category = "Memory", name = "Memory"))
+        val part = partRepository.saveAndFlush(CatalogPart(category = "memory", name = "Memory"))
         val result = mvc.post("/api/v1/builds") {
             with(user(owner.toString()))
             contentType = org.springframework.http.MediaType.APPLICATION_JSON

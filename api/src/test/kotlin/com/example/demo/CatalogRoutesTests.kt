@@ -2,10 +2,13 @@ package com.example.demo
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -14,11 +17,13 @@ import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
+import kotlin.test.assertTrue
 
-/** Verifies versioned API routes and JPA pagination against an isolated H2 database. */
+/** Verifies versioned API routes and JPA pagination against an disposable PostgreSQL database. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(PostgresTestConfiguration::class)
 @Transactional
 class CatalogRoutesTests @Autowired constructor(
     private val mvc: MockMvc,
@@ -33,9 +38,21 @@ class CatalogRoutesTests @Autowired constructor(
         repository.deleteAll()
         // Insert in reverse order to verify that pagination sorts in the database.
         repository.saveAllAndFlush(listOf(
-            CatalogPart(secondId, "Memory", "32 GB kit", BigDecimal("89.99"), Instant.parse("2026-01-01T00:00:00Z")),
-            CatalogPart(firstId, "CPU", "8-core CPU", BigDecimal("249.99"), Instant.parse("2026-01-01T00:00:00Z")),
+            CatalogPart(secondId, "memory", "32 GB kit", BigDecimal("89.99"), Instant.parse("2026-01-01T00:00:00Z")),
+            CatalogPart(firstId, "cpu", "8-core CPU", BigDecimal("249.99"), Instant.parse("2026-01-01T00:00:00Z")),
         ))
+    }
+
+    /** Ensures the SQL category check is active, rather than using a Hibernate-created schema. */
+    @ParameterizedTest
+    @ValueSource(strings = ["CPU", "Memory", "Case"])
+    fun `database rejects category labels outside the schema allowlist`(category: String) {
+        val error = assertThrows<DataIntegrityViolationException> {
+            repository.saveAndFlush(
+                CatalogPart(category = category, name = "Invalid category fixture"),
+            )
+        }
+        assertTrue(error.mostSpecificCause.message.orEmpty().contains("catalog_parts_category_check"))
     }
 
     /** Verifies API information at both supported forms of the versioned base path. */
@@ -155,7 +172,7 @@ class CatalogRoutesTests @Autowired constructor(
         mvc.get("/api/v1/parts/$firstId").andExpect {
             status { isOk() }
             jsonPath("$.part_id") { value(firstId.toString()) }
-            jsonPath("$.category") { value("CPU") }
+            jsonPath("$.category") { value("cpu") }
             jsonPath("$.name") { value("8-core CPU") }
             jsonPath("$.price") { value(249.99) }
             jsonPath("$.created_at") { value("2026-01-01T00:00:00Z") }
@@ -167,7 +184,7 @@ class CatalogRoutesTests @Autowired constructor(
     fun `part with missing price returns null instead of failing`() {
         val id = UUID.fromString("33333333-3333-3333-3333-333333333333")
         repository.saveAndFlush(
-            CatalogPart(id, "Case", "Case with unknown price", null, Instant.parse("2026-01-01T00:00:00Z")),
+            CatalogPart(id, "case", "Case with unknown price", null, Instant.parse("2026-01-01T00:00:00Z")),
         )
 
         mvc.get("/api/v1/parts/$id").andExpect {

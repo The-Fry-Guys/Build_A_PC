@@ -17,14 +17,19 @@ services:
     tty: true
 
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    env_file:
+      - ../.env
     ports:
       - "8080:8080"
     environment:
-        SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
-        SPRING_DATASOURCE_USERNAME: buildapc
-        SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD for the local database}
-        SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
+      SPRING_DATASOURCE_USERNAME: buildapc
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD for the local database}
+      # The SQL initialization script owns schema creation on fresh volumes.
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
     depends_on:
       db:
         condition: service_healthy
@@ -39,6 +44,7 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./src/main/resources/db/migration/V1__initial_schema.sql:/docker-entrypoint-initdb.d/001-initial-schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U buildapc -d buildapc"]
       interval: 5s
