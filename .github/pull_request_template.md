@@ -13,6 +13,7 @@ Current overall coverage number: __%
 ## Checklist
 - [] References at least one issue above
 - [] Tests added or updated; `./gradlew build` passes in `backend/` or `frontend/`
+- [] Was tested `./gradlew bootRun` && `./gradlew test` passes
 - [] `docs/openapi.yaml` updated if the API contract changed
 - [] No secrets, keys, or `.env` files committed
 
