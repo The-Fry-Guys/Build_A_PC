@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy build files first so dependency downloads are cached between builds
 COPY gradlew settings.gradle build.gradle ./
 COPY gradle ./gradle
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon > /dev/null || true
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon > /dev/null
 
 COPY src ./src
 RUN ./gradlew bootJar -x test --no-daemon

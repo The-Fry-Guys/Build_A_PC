@@ -37,8 +37,3 @@ export interface CaseDetails extends Part {
     category: 'Case';
     max_gpu_length: number;
 }
-
-export interface BuildCompatibility {
-    compatible: boolean;
-    issues: string[];
-}

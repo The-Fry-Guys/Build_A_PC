@@ -100,50 +100,49 @@ class PcBuildRoutesTests @Autowired constructor(
             jsonPath("$.totalElements") { value(0) }
             jsonPath("$.totalPages") { value(0) }
         }
+    }
 
-        @Test
-        fun `created empty build appears in owners list and can be deleted`() {
-            val result = mvc.post("/api/v1/builds") {
-                with(user(owner.toString()))
-                contentType = org.springframework.http.MediaType.APPLICATION_JSON
-                content = """{"name":"New build","partIds":[]}"""
-            }.andExpect {
-                status { isCreated() }
-                jsonPath("$.parts.length()") { value(0) }
-            }.andReturn()
+    @Test
+    fun `created empty build appears in owners list and can be deleted`() {
+        val result = mvc.post("/api/v1/builds") {
+            with(user(owner.toString()))
+            contentType = org.springframework.http.MediaType.APPLICATION_JSON
+            content = """{"name":"New build","partIds":[]}"""
+        }.andExpect {
+            status { isCreated() }
+            jsonPath("$.parts.length()") { value(0) }
+        }.andReturn()
 
-            val id = objectMapper.readTree(result.response.contentAsString)
-                .get("id").asString()
-            mvc.get("/api/v1/builds") { with(user(owner.toString())) }.andExpect {
-                status { isOk() }
-                jsonPath("$.content.length()") { value(3) }
-                jsonPath("$.content[0].build_id") { value(id) }
-            }
-            mvc.delete("/api/v1/builds/$id") { with(user(otherUser.toString())) }.andExpect {
-                status { isForbidden() }
-            }
-            mvc.delete("/api/v1/builds/$id") { with(user(owner.toString())) }.andExpect {
-                status { isNoContent() }
-            }
-            mvc.get("/api/v1/builds") { with(user(owner.toString())) }.andExpect {
-                status { isOk() }
-                jsonPath("$.content.length()") { value(2) }
-            }
+        val id = objectMapper.readTree(result.response.contentAsString).get("id").asString()
+        mvc.get("/api/v1/builds") { with(user(owner.toString())) }.andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(3) }
+            jsonPath("$.content[0].build_id") { value(id) }
         }
+        mvc.delete("/api/v1/builds/$id") { with(user(otherUser.toString())) }.andExpect {
+            status { isForbidden() }
+        }
+        mvc.delete("/api/v1/builds/$id") { with(user(owner.toString())) }.andExpect {
+            status { isNoContent() }
+        }
+        mvc.get("/api/v1/builds") { with(user(owner.toString())) }.andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(2) }
+        }
+    }
 
-        @Test
-        fun `blank names and duplicate part ids are rejected`() {
-            val partId = UUID.randomUUID()
-            for (body in listOf(
-                """{"name":" ","partIds":[]}""",
-                """{"name":"Build","partIds":["$partId","$partId"]}""",
-            )) {
-                mvc.post("/api/v1/builds") {
-                    with(user(owner.toString()))
-                    contentType = org.springframework.http.MediaType.APPLICATION_JSON
-                    content = body
-                }.andExpect { status { isBadRequest() } }
-            }
+    @Test
+    fun `blank names and duplicate part ids are rejected`() {
+        val partId = UUID.randomUUID()
+        for (body in listOf(
+        """{"name":" ","partIds":[]}""",
+        """{"name":"Build","partIds":["$partId","$partId"]}""",
+        )) {
+        mvc.post("/api/v1/builds") {
+            with(user(owner.toString()))
+            contentType = org.springframework.http.MediaType.APPLICATION_JSON
+            content = body
+        }.andExpect { status { isBadRequest() } }
         }
     }
 
