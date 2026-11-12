@@ -26,6 +26,7 @@ jest.mock('expo-router', () => ({
 jest.mock('react-native', () => {
   const React = require('react');
   return {
+    Platform: { OS: 'web' },
     View: ({ children }: { children: unknown }) => React.createElement('div', null, children),
     Button: ({ title, disabled, onPress }: { title: string; disabled: boolean; onPress: () => void }) =>
       React.createElement('button', { disabled, onClick: onPress }, title),

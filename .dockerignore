@@ -1,0 +1,14 @@
+# Root build context: send only API build inputs and the handwritten contract.
+**
+!api/
+!api/Dockerfile
+!api/gradlew
+!api/settings.gradle
+!api/build.gradle
+!api/gradle/
+!api/gradle/**
+!api/src/
+!api/src/main/
+!api/src/main/**
+!docs/
+!docs/openapi.yaml

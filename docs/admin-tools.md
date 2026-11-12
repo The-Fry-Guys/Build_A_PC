@@ -10,7 +10,7 @@ also outside this release.
 
 ## Authentication and permissions
 
-The feature builds on auth commit `f168eb7081433b75472d4aad3bc0428f2d22953b`.
+The feature integrates the GitHub OAuth implementation through commit `ff859c7`.
 `GET /api/v1/me` supplies the current profile to `useSession()`. The API validates its own
 bearer JWT, then checks the identified user's **current database role** for admin requests.
 An old `ADMIN` claim cannot preserve access after demotion. Missing/invalid tokens return
@@ -23,10 +23,11 @@ literal case-insensitive substrings or an exact UUID. The client never downloads
 directory. Private responses use `Cache-Control: no-store`; client caches are transient,
 account-scoped, cancelled and removed when permissions or the account change.
 
-The imported auth implementation currently supports GitHub sign-in on **web**. Its native
-GitHub login and native account panel are still stubs owned by the auth work. The Android
-admin screen uses the same session interface and encrypted token store; interactive Android
-sign-in and its final smoke test depend on that native auth work being completed.
+GitHub sign-in is implemented on **web and Android**. The Android provider stays mounted
+above navigation so the PKCE request survives the callback. Both platforms use the same
+session interface; Android stores the API token in SecureStore. Interactive device sign-in
+and the admin smoke test still need to be checked manually. See the README for the emulator
+and standalone APK commands.
 
 ## Provision the first administrator
 
@@ -116,7 +117,7 @@ absent in a normal application context.
 5. Confirm loading and retry behavior when the API is unreachable.
 6. Demote the account while its JWT remains valid: the next admin request must return 403.
 7. Log out or change accounts: no previous user's results remain visible.
-8. Repeat on an Android development build once native sign-in is connected. Use a reachable API
+8. Repeat on an Android development or standalone emulator build. Use a reachable API
    base URL ending in `/api/v1` (`10.0.2.2` for an emulator's host, or a LAN/hosted URL for a device).
 
 The admin acceptance test supplements the separately required PRD-3 vertical-slice test.

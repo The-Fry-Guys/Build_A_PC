@@ -5,6 +5,7 @@ import { useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { SessionProvider } from '@/auth/session-provider';
 import { AdminQueryProvider } from '@/admin/query-provider';
+import GitHubProvider from '@/auth/github-provider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -15,10 +16,12 @@ export default function TabLayout() {
       <AnimatedSplashOverlay />
       <SessionProvider>
         <AdminQueryProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="auth" />
-        </Stack>
+          <GitHubProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="auth" />
+            </Stack>
+          </GitHubProvider>
         </AdminQueryProvider>
       </SessionProvider>
     </ThemeProvider>

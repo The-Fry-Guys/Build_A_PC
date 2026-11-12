@@ -2,12 +2,15 @@
 #
 # Still needed:
 # TODO: move credentials to a .env file / secrets manager (change-me is a placeholder)
-# TODO: lock down SecurityConfig (currently permits all requests, CSRF disabled)
 # TODO: add application-prod.properties and a prod compose file (don't expose 5432 in prod)
 # TODO: React Native app must call http://<computer-LAN-IP>:8080 on a physical device, not localhost
 services:
   api:
-    build: .
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    env_file:
+      - ../.env
     ports:
       - "8080:8080"
     environment:

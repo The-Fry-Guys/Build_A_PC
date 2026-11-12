@@ -1,13 +1,14 @@
 # ---- Build stage ----
 FROM eclipse-temurin:21-jdk AS build
-WORKDIR /app
+WORKDIR /app/api
 
 # Copy build files first so dependency downloads are cached between builds
-COPY gradlew settings.gradle build.gradle ./
-COPY gradle ./gradle
+COPY api/gradlew api/settings.gradle api/build.gradle ./
+COPY api/gradle ./gradle
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon > /dev/null || true
 
-COPY src ./src
+COPY api/src/main ./src/main
+COPY docs/openapi.yaml /app/docs/openapi.yaml
 RUN ./gradlew bootJar -x test --no-daemon
 
 # ---- Runtime stage ----
@@ -18,7 +19,7 @@ RUN useradd --system --no-create-home spring
 USER spring
 
 # Plain jar is disabled by Spring Boot's Gradle plugin only for bootJar; pick the boot jar
-COPY --from=build /app/build/libs/*-SNAPSHOT.jar app.jar
+COPY --from=build /app/api/build/libs/*-SNAPSHOT.jar app.jar
 
 EXPOSE 8080
 

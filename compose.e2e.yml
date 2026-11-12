@@ -1,7 +1,9 @@
 # Isolated fixtures only: docker compose --env-file /dev/null -f compose.e2e.yml up --build -d
 services:
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     ports:
       - "127.0.0.1:8080:8080"
     environment:

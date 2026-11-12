@@ -5,13 +5,13 @@ info:
     API for managing PC builds, part compatibility, and user accounts across web and Android.
     Implemented operations include GET /, GET /actuator/health, POST /auth/github,
     GET /me, GET /parts, GET /parts/{id}, and GET /admin/users. Catalog and user lists support search.
-    Other operations describe the planned API contract.
+    Other operations marked planned describe the planned API contract.
     Versioned API responses use application/json and errors use application/problem+json.
     Database readiness is exposed by Spring Boot Actuator at /actuator/health using
     application/vnd.spring-boot.actuator.v3+json.
-    Unsupported HTTP methods return HTTP 405 Problem Details with an Allow header;
-    methods on planned operations are not available until implemented.
-    Unknown routes return HTTP 404 Problem Details.
+    Routing errors return HTTP 404 or HTTP 405 Problem Details; 405 includes an Allow header.
+    Authentication and role checks can return 401 or 403 before routing, including
+    for planned operations. An invalid Bearer token can produce 401 even on public routes.
   version: 1.0.0
 
 servers:
@@ -96,6 +96,7 @@ components:
 
     User:
       type: object
+      description: Public account fields returned by GitHub login, GET /me, and admin user search.
       required: [id, email, display_name, role, created_at]
       properties:
         id:
@@ -224,16 +225,21 @@ components:
         code:
           type: string
           minLength: 1
-          description: Single-use authorization code returned by GitHub.
+          description: Nonblank, single-use authorization code returned by GitHub.
         codeVerifier:
           type: string
           minLength: 43
           maxLength: 128
+          pattern: '^[A-Za-z0-9._~-]{43,128}(?![\s\S])'
           description: Original PKCE verifier used to generate the S256 challenge.
         redirectUri:
           type: string
           format: uri
-          description: Must exactly match a configured callback and the authorization request.
+          minLength: 1
+          description: >-
+            Must exactly match a configured callback and the authorization request.
+            Local defaults are http://localhost:8081/auth for web and client://auth
+            for Android. The API selects server-held credentials using this value.
           example: http://localhost:8081/auth
 
     GitHubAuthResponse:
@@ -307,7 +313,13 @@ components:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
     Unauthorized:
-      description: Missing or invalid JWT
+      description: Missing or invalid JWT, or the token does not identify an available account.
+      headers:
+        WWW-Authenticate:
+          description: Bearer challenge on Spring Security authentication failures.
+          schema:
+            type: string
+            example: Bearer
       content:
         application/problem+json:
           schema:
@@ -336,6 +348,12 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
+    UnsupportedMediaType:
+      description: Request content type is not supported; GitHub login requires application/json.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
     InternalServerError:
       description: An unexpected server error occurred.
       content:
@@ -346,6 +364,7 @@ components:
 paths:
   /:
     get:
+      x-implementation-status: implemented
       tags: [System]
       summary: Get API name and version
       responses:
@@ -365,6 +384,7 @@ paths:
       - url: /
         description: Spring Boot Actuator endpoint at the application root
     get:
+      x-implementation-status: implemented
       tags: [System]
       summary: Check application and database health
       responses:
@@ -393,6 +413,7 @@ paths:
 
   /auth/github:
     post:
+      x-implementation-status: implemented
       tags: [Auth]
       summary: Exchange GitHub authorization code for API JWT
       description: >-
@@ -400,7 +421,9 @@ paths:
         allowlisted redirect URI. Verify GitHub identity and primary email, then reuse
         an existing identity or create a user and identity transactionally.
         Missing or invalid input, rejected code or PKCE verifier, an unapproved redirect,
-        or an unverified primary email returns 400. Failed login persists nothing.
+        or an unverified primary email returns 400. Account creation is transactional;
+        rejected, unverified, or conflicting identities create no user or identity.
+        No account linking or refresh token is provided. No existing app JWT is required.
       security: []
       requestBody:
         required: true
@@ -411,6 +434,16 @@ paths:
       responses:
         '200':
           description: Successful authentication
+          headers:
+            Cache-Control:
+              description: Prevents caching the app JWT and profile.
+              schema:
+                type: string
+                enum: [no-store]
+            Pragma:
+              schema:
+                type: string
+                enum: [no-cache]
           content:
             application/json:
               schema:
@@ -419,6 +452,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '409':
           $ref: '#/components/responses/AuthConflict'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '502':
           $ref: '#/components/responses/ProviderUnavailable'
         '500':
@@ -426,9 +463,10 @@ paths:
 
   /auth/google:
     post:
+      x-implementation-status: planned
       tags: [ Auth ]
-      summary: Authenticate with Google and receive an API JWT
-      description: Web sends an authorization code with PKCE fields; native sends a Google ID token.
+      summary: Planned - Authenticate with Google and receive an API JWT
+      description: Planned; no Google login handler exists yet. Web will send an authorization code with PKCE fields; native will send a Google ID token.
       requestBody:
         required: true
         content:
@@ -451,25 +489,38 @@ paths:
 
   /me:
     get:
+      x-implementation-status: implemented
       tags: [ Users ]
       summary: Get current logged-in user profile
+      description: >-
+        Validates the app JWT and uses its UUID subject to load the current user
+        from the database. A missing, invalid, or expired token, an invalid subject,
+        or a missing account returns 401. This is not a GitHub profile lookup.
       security:
         - bearerAuth: [ ]
       responses:
         '200':
           description: User profile data
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /users/me:
     put:
+      x-implementation-status: planned
       tags: [ Users ]
-      summary: Update user profile
+      summary: Planned - Update user profile
       security:
         - bearerAuth: [ ]
       responses:
@@ -482,8 +533,9 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     delete:
+      x-implementation-status: planned
       tags: [ Users ]
-      summary: Delete user account
+      summary: Planned - Delete user account
       security:
         - bearerAuth: [ ]
       responses:
@@ -496,6 +548,7 @@ paths:
 
   /parts:
     get:
+      x-implementation-status: implemented
       tags: [ Parts ]
       summary: Get list of general PC parts
       description: Public database search over part name/category, ordered by ID for consistent pagination.
@@ -517,8 +570,9 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
+      x-implementation-status: planned
       tags: [ Parts ]
-      summary: Add a new PC part
+      summary: Planned - Add a new PC part
       security:
         - bearerAuth: [ ]
       responses:
@@ -535,6 +589,7 @@ paths:
 
   /parts/{id}:
     get:
+      x-implementation-status: implemented
       tags: [ Parts ]
       summary: Get specific part details
       parameters:
@@ -560,8 +615,9 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     put:
+      x-implementation-status: planned
       tags: [ Parts ]
-      summary: Update specific part details
+      summary: Planned - Update specific part details
       security:
         - bearerAuth: [ ]
       parameters:
@@ -587,8 +643,9 @@ paths:
 
   /builds:
     get:
+      x-implementation-status: planned
       tags: [ Builds ]
-      summary: Retrieve all saved builds for the authenticated user
+      summary: Planned - Retrieve all saved builds for the authenticated user
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -608,8 +665,9 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
+      x-implementation-status: planned
       tags: [ Builds ]
-      summary: Initialize a new PC build
+      summary: Planned - Initialize a new PC build
       security:
         - bearerAuth: [ ]
       responses:
@@ -624,8 +682,9 @@ paths:
 
   /builds/{id}:
     get:
+      x-implementation-status: planned
       tags: [ Builds ]
-      summary: Retrieve a specific build
+      summary: Planned - Retrieve a specific build
       security:
         - bearerAuth: [ ]
       parameters:
@@ -647,8 +706,9 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     put:
+      x-implementation-status: planned
       tags: [ Builds ]
-      summary: Modify a build (add/remove parts)
+      summary: Planned - Modify a build (add/remove parts)
       security:
         - bearerAuth: [ ]
       parameters:
@@ -674,8 +734,9 @@ paths:
 
   /builds/{id}/compatibility:
     get:
+      x-implementation-status: planned
       tags: [ Builds ]
-      summary: Evaluate build compatibility
+      summary: Planned - Evaluate build compatibility
       security:
         - bearerAuth: [ ]
       parameters:
@@ -703,6 +764,7 @@ paths:
 
   /admin/users:
     get:
+      x-implementation-status: implemented
       tags: [ Admin ]
       summary: View and search user data
       description: >-
@@ -738,8 +800,9 @@ paths:
 
   /admin/users/{id}:
     delete:
+      x-implementation-status: planned
       tags: [ Admin ]
-      summary: Delete a user
+      summary: Planned - Delete a user
       security:
         - bearerAuth: [ ]
       parameters:
@@ -763,8 +826,9 @@ paths:
 
   /admin/parts:
     post:
+      x-implementation-status: planned
       tags: [ Admin ]
-      summary: Add new part data
+      summary: Planned - Add new part data
       security:
         - bearerAuth: [ ]
       responses:
@@ -781,8 +845,9 @@ paths:
 
   /admin/parts/{id}:
     put:
+      x-implementation-status: planned
       tags: [ Admin ]
-      summary: Update existing part information
+      summary: Planned - Update existing part information
       security:
         - bearerAuth: [ ]
       parameters:
@@ -806,8 +871,9 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     delete:
+      x-implementation-status: planned
       tags: [ Admin ]
-      summary: Remove part data
+      summary: Planned - Remove part data
       security:
         - bearerAuth: [ ]
       parameters:

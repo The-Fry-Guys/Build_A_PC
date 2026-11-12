@@ -3,10 +3,10 @@ name: API and Expo admin checks
 on:
   pull_request:
     branches: [main]
-    paths: ['api/**', 'client/**', 'compose.e2e.yml', '.github/workflows/admin.yml']
+    paths: ['api/**', 'client/**', 'docs/openapi.yaml', '.dockerignore', 'compose.e2e.yml', '.github/workflows/admin.yml']
   push:
     branches: [main]
-    paths: ['api/**', 'client/**', 'compose.e2e.yml', '.github/workflows/admin.yml']
+    paths: ['api/**', 'client/**', 'docs/openapi.yaml', '.dockerignore', 'compose.e2e.yml', '.github/workflows/admin.yml']
 
 permissions:
   contents: read

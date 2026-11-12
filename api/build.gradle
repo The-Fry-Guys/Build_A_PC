@@ -29,6 +29,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-restclient'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.2.0'
 	implementation 'org.jetbrains.kotlin:kotlin-reflect'
 	implementation 'tools.jackson.module:jackson-module-kotlin'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -40,8 +41,17 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'io.rest-assured:rest-assured:6.3.0'
 	testImplementation 'org.testcontainers:testcontainers-postgresql'
+	testImplementation 'org.springframework.security:spring-security-test'
 	testImplementation 'org.jetbrains.kotlin:kotlin-test-junit5'
+	testImplementation 'io.rest-assured:spring-mock-mvc:6.3.0'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// Package the handwritten contract without maintaining a second copy under api/.
+tasks.named('processResources') {
+	from(layout.projectDirectory.file('../docs/openapi.yaml')) {
+		into 'static'
+	}
 }
 
 kotlin {
