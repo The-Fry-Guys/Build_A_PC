@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
 import java.time.Instant
+import java.math.BigDecimal
 import java.util.UUID
 
 @RestController
@@ -58,27 +60,66 @@ class PCBuildController(
     @Transactional
     fun createBuild(authentication: Authentication, @RequestBody request: CreateBuildRequest): BuildDetailResponse {
         val userId = authentication.userId()
-        if (request.name.isBlank() || request.partIds.size != request.partIds.toSet().size) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Build name must not be blank and part IDs must be unique.")
-        }
-        val parts = partRepository.findAllById(request.partIds)
-        if (parts.size != request.partIds.size) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more parts were not found.")
-        }
-        return buildRepository.save(PCBuild(userId = userId, name = request.name, parts = parts.toMutableList()))
-            .toBuildDetailResponse()
+        val parts = validatedParts(request)
+        val build = PCBuild(userId = userId, name = request.name)
+        build.parts.addAll(parts.map { (part, quantity) -> BuildPart(build = build, catalogPart = part, quantity = quantity) })
+        return buildRepository.save(build).toBuildDetailResponse()
+    }
+
+    @GetMapping("/{id}")
+    @Transactional(readOnly = true)
+    fun getBuild(authentication: Authentication, @PathVariable id: UUID): BuildDetailResponse =
+        ownedBuild(id, authentication.userId()).toBuildDetailResponse()
+
+    @PutMapping("/{id}")
+    @Transactional
+    fun updateBuild(
+        authentication: Authentication,
+        @PathVariable id: UUID,
+        @RequestBody request: CreateBuildRequest,
+    ): BuildDetailResponse {
+        val build = ownedBuild(id, authentication.userId())
+        val parts = validatedParts(request)
+        build.name = request.name
+        build.parts.clear()
+        build.parts.addAll(parts.map { (part, quantity) -> BuildPart(build = build, catalogPart = part, quantity = quantity) })
+        return build.toBuildDetailResponse()
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Transactional
     fun deleteBuild(authentication: Authentication, @PathVariable id: UUID) {
-        val userId = authentication.userId()
+        val build = ownedBuild(id, authentication.userId())
+        buildRepository.delete(build)
+    }
+
+    private fun ownedBuild(id: UUID, userId: UUID): PCBuild {
         val build = buildRepository.findById(id).orElseThrow { ResourceNotFoundException() }
         if (build.userId != userId) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "You are not allowed to access this resource.")
         }
-        buildRepository.delete(build)
+        return build
+    }
+
+    private fun validatedParts(request: CreateBuildRequest): List<Pair<CatalogPart, Int>> {
+        if (request.name.isBlank() || request.name.length > 255 || (request.partIds == null) == (request.parts == null)) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "Provide a nonblank build name of at most 255 characters and exactly one of partIds or parts.",
+            )
+        }
+        val selections = request.parts ?: request.partIds!!.map { BuildPartWriteRequest(it, 1) }
+        val ids = selections.map { it.partId }
+        if (ids.size != ids.toSet().size || selections.any { it.quantity == null || it.quantity < 1 }) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Part IDs must be unique and quantities must be positive.")
+        }
+        val parts = partRepository.findAllById(ids)
+        if (parts.size != ids.size) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more parts were not found.")
+        }
+        val quantities = selections.associate { it.partId to it.quantity!! }
+        return parts.map { it to quantities.getValue(it.id) }
     }
 }
 
@@ -88,7 +129,13 @@ private fun Authentication.userId(): UUID = try {
     throw ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user ID is invalid.")
 }
 
-data class CreateBuildRequest(val name: String, val partIds: List<UUID>)
+data class CreateBuildRequest(
+    val name: String,
+    val partIds: List<UUID>? = null,
+    val parts: List<BuildPartWriteRequest>? = null,
+)
+
+data class BuildPartWriteRequest(val partId: UUID, val quantity: Int?)
 
 data class PcBuildPage(
     val content: List<BuildResponse>,
@@ -108,13 +155,25 @@ data class BuildResponse(
 data class BuildDetailResponse(
     val id: UUID,
     val name: String,
-    val parts: List<PartResponse>,
+    val parts: List<BuildPartResponse>,
     val createdAt: Instant,
 )
 
 private fun PCBuild.toBuildDetailResponse() = BuildDetailResponse(
     id = id,
     name = name,
-    parts = parts.map { PartResponse(it.id, it.category, it.name, it.price, it.createdAt) },
+    parts = parts.sortedBy { it.catalogPart.id }.map {
+        val part = it.catalogPart
+        BuildPartResponse(part.id, part.category, part.name, part.price, part.createdAt, it.quantity)
+    },
     createdAt = createdAt,
+)
+
+data class BuildPartResponse(
+    @get:JsonProperty("part_id") val partId: UUID,
+    val category: String,
+    val name: String,
+    val price: BigDecimal?,
+    @get:JsonProperty("created_at") val createdAt: Instant,
+    val quantity: Int,
 )

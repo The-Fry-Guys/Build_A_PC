@@ -123,12 +123,12 @@ invalid paging parameters return 400 Problem Details. See `docs/openapi.yaml` fo
 the implemented routes and planned authenticated endpoints.
 
 The authenticated build controller exposes `GET /api/v1/builds`, `POST /api/v1/builds`,
-and `DELETE /api/v1/builds/{id}`. Build listing is paginated with `page` and `size`,
+`GET /api/v1/builds/{id}`, `PUT /api/v1/builds/{id}`, and `DELETE /api/v1/builds/{id}`.
+Build listing is paginated with `page` and `size`,
 and includes the authenticated user's builds at any stage, newest first.
-Creation accepts `{ "name": "My PC", "partIds": ["<catalog-part-uuid>"] }` and returns
-`id`, `name`, `parts`, and `createdAt`; deletion requires ownership and returns HTTP 204.
-Other build operations and admin mutations remain planned, as marked in OpenAPI.
-
+Creation and replacement accept a build name and selected part IDs or quantities; detail
+responses include the selected parts. Updates and deletion require ownership.
+Admin mutations remain planned, as marked in OpenAPI.
 ### API tests
 
 Each running API instance uses at most 3 database connections and maintains a minimum

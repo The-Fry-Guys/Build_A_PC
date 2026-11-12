@@ -5,8 +5,8 @@ info:
     API for managing PC builds, part compatibility, and user accounts across web and Android.
     Implemented operations include GET /, GET /actuator/health, POST /auth/github,
     GET /me, GET /parts, GET /parts/{id}, GET /admin/users, GET /builds,
-    POST /builds, and DELETE /builds/{id}. Catalog, user, and build lists support search
-    or pagination as documented.
+    POST /builds, GET /builds/{id}, PUT /builds/{id}, and DELETE /builds/{id}.
+    Catalog, user, and build lists support search or pagination as documented.
     Other operations marked planned describe the planned API contract.
     Versioned API responses use application/json and errors use application/problem+json.
     Database readiness is exposed by Spring Boot Actuator at /actuator/health using
@@ -116,6 +116,65 @@ components:
         created_at:
           type: string
           format: date-time
+
+    BuildWriteRequest:
+      type: object
+      required: [name]
+      oneOf:
+        - required: [partIds]
+        - required: [parts]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: A nonblank build name.
+        partIds:
+          type: array
+          uniqueItems: true
+          description: Complete set of unique part IDs, each with quantity one; an empty list is allowed.
+          items:
+            type: string
+            format: uuid
+        parts:
+          type: array
+          description: Complete set of selections with unique part IDs and positive quantities; an empty list is allowed.
+          items:
+            type: object
+            required: [partId, quantity]
+            properties:
+              partId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1
+
+    BuildDetail:
+      type: object
+      required: [id, name, parts, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuildPart'
+        createdAt:
+          type: string
+          format: date-time
+
+    BuildPart:
+      allOf:
+        - $ref: '#/components/schemas/Part'
+        - type: object
+          required: [quantity]
+          properties:
+            quantity:
+              type: integer
+              minimum: 1
 
     Part:
       type: object
@@ -714,14 +773,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateBuildRequest'
+              $ref: '#/components/schemas/BuildWriteRequest'
       responses:
         '201':
           description: Build created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BuildResponse'
+                $ref: '#/components/schemas/BuildDetail'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -758,7 +817,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     get:
-      x-implementation-status: planned
+      x-implementation-status: implemented
       tags: [ Builds ]
       summary: Planned - Retrieve a specific build
       security:
@@ -773,6 +832,12 @@ paths:
       responses:
         '200':
           description: Build details and selected parts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -782,9 +847,10 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     put:
-      x-implementation-status: planned
+      x-implementation-status: implemented
       tags: [ Builds ]
-      summary: Planned - Modify a build (add/remove parts)
+      summary: Replace the name and selected parts of an owned build
+      description: Provide the name and exactly one of partIds or parts; an empty list removes all selected parts.
       security:
         - bearerAuth: [ ]
       parameters:
@@ -794,9 +860,19 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuildWriteRequest'
       responses:
         '200':
           description: Build updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildDetail'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':

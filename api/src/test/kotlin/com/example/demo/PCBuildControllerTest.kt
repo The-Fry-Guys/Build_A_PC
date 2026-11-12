@@ -49,7 +49,7 @@ class PCBuildControllerTest @Autowired constructor(
 
         val request = CreateBuildRequest("My Build", listOf(validPartId, invalidPartId))
 
-        `when`(partRepository.findAllById(request.partIds)).thenReturn(listOf(foundPart))
+        `when`(partRepository.findAllById(listOf(validPartId, invalidPartId))).thenReturn(listOf(foundPart))
 
         mvc.perform(
             post("/api/v1/builds")
@@ -64,7 +64,7 @@ class PCBuildControllerTest @Autowired constructor(
         val foundPart = CatalogPart(category = "GPU", name = "Test GPU")
         val request = CreateBuildRequest("Dream PC", listOf(foundPart.id))
 
-        `when`(partRepository.findAllById(request.partIds)).thenReturn(listOf(foundPart))
+        `when`(partRepository.findAllById(listOf(foundPart.id))).thenReturn(listOf(foundPart))
         `when`(buildRepository.save(any(PCBuild::class.java))).thenAnswer { invocation ->
             invocation.arguments[0] as PCBuild
         }

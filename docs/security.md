@@ -6,13 +6,14 @@ in [architecture.md](architecture.md). Planned controls are not yet production p
 
 ## 1. Cross-user access (information disclosure / tampering)
 
-**Threat:** A user attempts to list or delete another user's PC builds.
+**Threat:** A user attempts to list, view, change, or delete another user's PC builds.
 
 **Current controls:** [SecurityConfig.kt](../api/src/main/kotlin/com/example/demo/SecurityConfig.kt)
 requires authentication for build routes. [PCBuildController.kt](../api/src/main/kotlin/com/example/demo/PCBuildController.kt)
-scopes build listings to the authenticated user ID and checks ownership before deletion.
+scopes build listings to the authenticated user ID and checks ownership before viewing,
+updating, or deleting a build.
 [PcBuildRoutesTests.kt](../api/src/test/kotlin/com/example/demo/PcBuildRoutesTests.kt)
-checks anonymous access, listing isolation, and cross-user deletion.
+checks anonymous access, listing isolation, and cross-user access to individual builds.
 
 **Remaining work:** These tests supply mock authentication. The API does not yet authenticate
 real bearer tokens. Integrate verified authentication with application user IDs, then test
