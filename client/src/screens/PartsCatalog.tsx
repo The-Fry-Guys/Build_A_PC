@@ -128,8 +128,21 @@ export default function PartsCatalog() {
 /* Defines the cross-platform styling rules for the parts catalog UI. */
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
-    centered: { justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 16 },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12 },
+
+    filterContainer: { marginBottom: 16 },
+    filterScroll: { gap: 8, paddingRight: 16 },
+    filterPill: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 20
+    },
+    filterPillActive: { backgroundColor: '#1976d2' },
+    filterPillText: { color: '#333', fontWeight: '600' },
+    filterPillTextActive: { color: '#fff' },
+
     list: { paddingBottom: 24 },
     card: {
         backgroundColor: '#ffffff',
@@ -142,12 +155,13 @@ const styles = StyleSheet.create({
         elevation: 2
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    category: { fontSize: 12, color: '#666', textTransform: 'uppercase' },
+    categoryText: { fontSize: 12, color: '#666', textTransform: 'uppercase' },
     price: { fontSize: 16, fontWeight: 'bold', color: '#2e7d32' },
     name: { fontSize: 18, marginBottom: 16 },
     addButton: { backgroundColor: '#1976d2', padding: 10, borderRadius: 6, alignItems: 'center' },
     retryButton: { backgroundColor: '#d32f2f', padding: 10, borderRadius: 6, alignItems: 'center', marginTop: 12 },
     addButtonText: { color: '#ffffff', fontWeight: 'bold' },
     loadingText: { marginTop: 12, color: '#666' },
-    errorText: { color: '#d32f2f', fontSize: 16, textAlign: 'center' }
+    errorText: { color: '#d32f2f', fontSize: 16, textAlign: 'center' },
+    emptyText: { textAlign: 'center', color: '#666', marginTop: 32, fontSize: 16 }
 });
