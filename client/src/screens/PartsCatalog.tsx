@@ -4,7 +4,7 @@ import { Part } from '@/types/build';
 
 const CATEGORIES = ['CPU', 'GPU', 'Motherboard', 'RAM', 'Storage', 'Power Supply', 'Case', 'Cooler'];
 
-async function loadParts(): Promise<Part[]> {
+async function loadParts(category: string | null): Promise<Part[]> {
     const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
     const url = category
         ? `${apiUrl}/api/v1/parts?category=${encodeURIComponent(category)}`
