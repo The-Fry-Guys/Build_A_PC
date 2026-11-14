@@ -49,12 +49,12 @@ export default function PartsCatalog() {
     const renderPartCard = ({ item }: { item: Part }) => (
         <View style = {styles.card}>
             <View style = {styles.cardHeader}>
-                <Text style = {styles.category}>{item.category} </Text>
-                <Text style = {styles.price}>${item.price.toFixed(2)} </Text>
+                <Text style = {styles.categoryText}> {item.category} </Text>
+                <Text style = {styles.price}> ${item.price.toFixed(2)} </Text>
             </View>
-            <Text style = {styles.name}>{item.name} </Text>
+            <Text style = {styles.name}> {item.name} </Text>
 
-            <TouchableOpacity style = {styles.addButton} onPress = {() => console.log(`Added ${item.name} to build`)}>
+            <TouchableOpacity style = {styles.addButton} onPress={() => console.log(`Added ${item.name} to build`)}>
                 <Text style = {styles.addButtonText}> Add to Build </Text>
             </TouchableOpacity>
         </View>
