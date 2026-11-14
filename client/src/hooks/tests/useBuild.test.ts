@@ -10,6 +10,7 @@ describe('useBuild Hook', () => {
         price: 300.00,
         socket: 'AM5',
         estimated_wattage: 100,
+        created_at: new Date().toISOString()
     };
 
     const mockMobo: MotherboardDetails = {
@@ -19,6 +20,7 @@ describe('useBuild Hook', () => {
         price: 200.00,
         socket: 'AM5',
         memory_slots: 'DDR5',
+        created_at: new Date().toISOString()
     };
 
     it('initializes with an empty build', async () => {
