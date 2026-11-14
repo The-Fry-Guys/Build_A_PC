@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
         elevation: 2
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    category: { fontSize: 12, color: '#666', textTransform: 'uppercase' },
     categoryText: { fontSize: 12, color: '#666', textTransform: 'uppercase' },
     price: { fontSize: 16, fontWeight: 'bold', color: '#2e7d32' },
     name: { fontSize: 18, marginBottom: 16 },
