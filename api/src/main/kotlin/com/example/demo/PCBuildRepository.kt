@@ -7,4 +7,5 @@ import java.util.UUID
 
 interface PCBuildRepository : JpaRepository<PCBuild, UUID> {
     fun findAllByUserId(userId: UUID, pageable: Pageable): Page<PCBuild>
+    fun deleteByUserId(userId: UUID)
 }
