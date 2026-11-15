@@ -173,3 +173,25 @@ export function getAdminUsers(input: DirectoryRequest): Promise<DirectoryPage<Ap
 export function getCatalogParts(input: DirectoryRequest): Promise<DirectoryPage<CatalogPart>> {
   return request(directoryPath('/parts', input), { method: 'GET', signal: input.signal }, false);
 }
+
+/** Update's the user's profile. */
+export function updateProfile(displayName: string): Promise<AppUser> {
+  return request<AppUser>(
+      '/me',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName }),
+      },
+      true,
+  );
+}
+
+/** Delete's the user's account. */
+export function deleteAccount(): Promise<void> {
+  return request<void>(
+      '/me',
+      { method: 'DELETE' },
+      true,
+  );
+}
