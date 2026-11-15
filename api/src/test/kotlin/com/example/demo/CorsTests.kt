@@ -34,6 +34,9 @@ class CorsTests {
     @MockitoBean
     private lateinit var decoder: JwtDecoder
 
+    @MockitoBean
+    private lateinit var accountService: AccountService
+
     @ParameterizedTest
     @ValueSource(strings = ["http://localhost:8081", "https://web.buildapc.test"])
     fun `allowed preflight succeeds without authentication`(origin: String) {
