@@ -59,7 +59,7 @@ export default function UserProfile() {
         setErrorMsg('');
         try {
             await deleteAccount();
-            await tokenStore.remove();
+            await tokenStore.clear();
             setUser(null);
         } catch (error) {
             console.error("Failed to delete account:", error);
