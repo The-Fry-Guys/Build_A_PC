@@ -2,7 +2,7 @@ export interface Part {
     part_id: string;
     category: 'CPU' | 'Motherboard' | 'Memory' | 'Video Card' | 'Power Supply' | 'Case' | string;
     name: string;
-    price: number;
+    price: number | null;
 }
 
 export interface CpuDetails extends Part {

@@ -17,7 +17,7 @@ export default function ActiveBuild() {
             <View style = {styles.cardInfo}>
                 <Text style = {styles.category}>{item.category} </Text>
                 <Text style = {styles.name}>{item.name} </Text>
-                <Text style = {styles.price}>${item.price.toFixed(2)} </Text>
+                <Text style = {styles.price}>{item.price == null ? 'Price unavailable' : `$${item.price.toFixed(2)}`} </Text>
             </View>
             <TouchableOpacity
                 style = {styles.removeButton}
