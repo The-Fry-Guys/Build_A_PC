@@ -2,8 +2,9 @@ export interface Part {
     part_id: string;
     category: string;
     name: string;
-    price: number;
-    created_at: string
+    price: number | null;
+    created_at?: string;
+    quantity?: number;
 }
 
 export interface CpuDetails extends Part {

@@ -6,6 +6,7 @@ CREATE TABLE pc_builds (
     id uuid PRIMARY KEY,
     user_id uuid NOT NULL,
     name varchar(255) NOT NULL,
+    budget numeric(10,2),
     created_at timestamp with time zone NOT NULL
 );
 

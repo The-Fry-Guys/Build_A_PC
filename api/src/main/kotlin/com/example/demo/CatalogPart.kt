@@ -15,11 +15,11 @@ class CatalogPart(
     @Id
     val id: UUID = UUID.randomUUID(),
     @Column(nullable = false)
-    val category: String = "",
+    var category: String = "",
     @Column(nullable = false)
-    val name: String = "",
+    var name: String = "",
     @Column(precision = 10, scale = 2)
-    val price: BigDecimal? = null,
+    var price: BigDecimal? = null,
     @Column(name = "created_at", nullable = false)
     val createdAt: Instant = Instant.now(),
 )

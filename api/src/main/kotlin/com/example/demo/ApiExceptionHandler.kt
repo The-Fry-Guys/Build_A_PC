@@ -11,6 +11,7 @@ import org.springframework.web.ErrorResponseException
 import org.springframework.web.ErrorResponse
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
@@ -85,6 +86,11 @@ class ApiExceptionHandler {
                 request,
             ),
         )
+
+    /** Reports unique-key and foreign-key conflicts without exposing database details. */
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataConflict(request: HttpServletRequest): ResponseEntity<ProblemDetail> =
+        response(problemDetail(HttpStatus.CONFLICT, "The requested change conflicts with existing data.", request))
 
     /** Preserves other framework HTTP errors and sanitizes unexpected server failures. */
     @ExceptionHandler(Exception::class)

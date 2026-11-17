@@ -45,6 +45,18 @@ describe('useBuild Hook', () => {
         expect(result.current.getTotalPrice()).toBe(500.00);
     });
 
+    it('keeps nullable prices safe in the build total', async () => {
+        const { result } = await renderHook(() => useBuild());
+        const unpricedCpu = { ...mockCpu, part_id: 'cpu-unpriced', price: null };
+
+        await act(async () => {
+            result.current.addPart(unpricedCpu);
+        });
+
+        expect(result.current.selectedParts).toEqual([unpricedCpu]);
+        expect(result.current.getTotalPrice()).toBe(0);
+    });
+
     it('removes parts by ID', async () => {
         const { result } = await renderHook(() => useBuild());
 

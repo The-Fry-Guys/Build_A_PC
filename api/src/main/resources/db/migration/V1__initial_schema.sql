@@ -304,6 +304,7 @@ CREATE TABLE public.pc_builds (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
     name text NOT NULL,
+    budget numeric(10,2),
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 

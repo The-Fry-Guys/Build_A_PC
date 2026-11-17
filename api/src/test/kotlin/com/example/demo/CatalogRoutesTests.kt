@@ -204,6 +204,79 @@ class CatalogRoutesTests @Autowired constructor(
         }
     }
 
+    /** Verifies the API reports database price bounds while ignoring parts without prices. */
+    @Test
+    fun `catalog price range returns lowest and highest listed prices`() {
+        repository.saveAndFlush(
+            CatalogPart(
+                UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                "case",
+                "Unpriced case",
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+            ),
+        )
+
+        mvc.get("/api/v1/parts/price-range").andExpect {
+            status { isOk() }
+            jsonPath("$.min_price") { value(89.99) }
+            jsonPath("$.max_price") { value(249.99) }
+        }
+    }
+
+    /** Verifies an empty set of listed prices is represented by nullable API bounds. */
+    @Test
+    fun `catalog price range returns null bounds when no prices are listed`() {
+        repository.deleteAllInBatch()
+        repository.saveAndFlush(
+            CatalogPart(
+                UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                "case",
+                "Unpriced case",
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+            ),
+        )
+
+        mvc.get("/api/v1/parts/price-range").andExpect {
+            status { isOk() }
+            jsonPath("$.min_price") { value(null) }
+            jsonPath("$.max_price") { value(null) }
+        }
+    }
+
+    /** Verifies inclusive API price bounds filter catalog rows and omit unpriced rows. */
+    @Test
+    fun `catalog price range filters return matching database values`() {
+        repository.saveAndFlush(
+            CatalogPart(
+                UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                "case",
+                "Unpriced case",
+                null,
+                Instant.parse("2026-01-01T00:00:00Z"),
+            ),
+        )
+
+        mvc.get("/api/v1/parts?minPrice=89.99&maxPrice=249.99").andExpect {
+            status { isOk() }
+            jsonPath("$.content.length()") { value(2) }
+            jsonPath("$.content[0].price") { value(249.99) }
+            jsonPath("$.content[1].price") { value(89.99) }
+            jsonPath("$.totalElements") { value(2) }
+        }
+    }
+
+    /** Verifies inverted price bounds are rejected with HTTP 400 Problem Details. */
+    @Test
+    fun `catalog rejects inverted price bounds`() {
+        mvc.get("/api/v1/parts?minPrice=250&maxPrice=50").andExpect {
+            status { isBadRequest() }
+            content { contentTypeCompatibleWith("application/problem+json") }
+            jsonPath("$.status") { value(400) }
+        }
+    }
+
     /** Verifies that an unknown part UUID returns HTTP 404 Problem Details. */
     @Test
     fun `unknown part returns problem details`() {

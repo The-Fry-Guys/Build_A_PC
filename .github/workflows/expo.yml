@@ -38,7 +38,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Run client tests with coverage
-        run: npm test -- --runInBand --coverage
+        run: npm test -- --runInBand --coverage --forceExit
 
       - name: Export Android bundle
         run: npx expo export --platform android --output-dir dist/android

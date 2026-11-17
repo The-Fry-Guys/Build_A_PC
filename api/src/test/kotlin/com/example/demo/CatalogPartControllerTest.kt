@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
@@ -22,6 +23,9 @@ import java.util.UUID
 @WebMvcTest(CatalogPartController::class)
 @Import(SecurityConfig::class)
 class CatalogPartControllerTest @Autowired constructor(private val mvc: MockMvc) {
+    @MockitoBean
+    private lateinit var jdbcTemplate: JdbcTemplate
+
     @MockitoBean
     private lateinit var jwtDecoder: JwtDecoder
 

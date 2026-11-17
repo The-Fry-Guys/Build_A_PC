@@ -5,67 +5,92 @@ Project 3 for CST438 Software Engineering
 
 [Architecture](docs/architecture.md) · [Decisions](docs/adr/) ·
 [Security](docs/security.md) · [Runbook](docs/runbook.md) ·
-[Demo](docs/demo.md) · [Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
+[Demo](docs/demo.md) · [Visitor onboarding](docs/onboarding.md) ·
+[Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
 
-## How to Setup Expo for development
+## Start the project with Docker Compose **(ONLY IMPORTANT PART FOR DEMO BUILD)**
 
-- Install Node.js **24.x** (matching Expo CI), npm, and **Java 21**.
-- Windows: use Git Bash for `load_env.sh`; use your Windows Android SDK.
-- From `client/`, install dependencies once (and after lockfile changes):
+You need Git and Docker Engine or Docker Desktop with Docker Compose v2. Run the
+commands below from the repository root (`Build_A_PC/`), not from `api/`.
+Docker runs the Expo web client locally; by default it uses the hosted API at
+`https://build-a-pc-w99e.onrender.com`, so Node.js and Java are not needed on the
+host.
 
-  ```bash
-  npm ci
-  ```
+1. Clone the repository and create the environment files:
 
-- In Android Studio SDK Manager
-  - Install Android SDK Platform 36 (Android 16)
-  - Install SDK Build-Tools
-  - Install Android Emulator
-  - Install Android SDK Platform-Tools (includes adb)
-  - (note that many of these may already be installed)
+   ```bash
+   git clone https://github.com/The-Fry-Guys/Build_A_PC.git
+   cd Build_A_PC
+   cp .env.example .env
+   cp client/.env.example client/.env
+   ```
 
-- In Android Studio Device Manager
-  - Create a Pixel 9 virtual device named exactly **`Pixel_9`**
-  - Start the emulator (not connected to any app)
+   Compose requires a non-empty `DB_PASSWORD` in the root `.env` even when using
+   the hosted API; its example value is enough for frontend-only startup. For the
+   local API and database, replace it with a local password and set
+   `APP_JWT_SECRET_BASE64`. GitHub sign-in needs the OAuth settings described
+   below; the catalog is public.
 
-- From /client, run:
+2. Build and start only the frontend (it uses the hosted API):
 
-1. 
+   ```bash
+   docker compose up --build
+   ```
+
+3. Open [http://localhost:8081](http://localhost:8081). The hosted API health
+   check is [here](https://build-a-pc-w99e.onrender.com/actuator/health). Press
+   `Ctrl+C` to stop; `docker compose down` removes the frontend container.
+
+To build and run the frontend, API, and PostgreSQL locally, set the API URL and
+start the local profile (Bash/zsh):
+
 ```bash
-adb devices
-npx expo run:android
-```
-(note that adb devices may not work first try, contact Austin for help if you have issues)
-Find your SDK path in Android Studio → SDK Manager → **Android SDK Location**.
-On Linux/macOS, add this to your shell configuration, using that actual path:
-
-```bash
-export ANDROID_HOME="/your/Android/sdk"
-export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator"
-```
-
-On Windows, set `ANDROID_HOME` and add its `platform-tools` and `emulator`
-directories to your user `Path`. Restart the terminal after changing these.
-
-2. run:
-```bash
-npx expo start --web
+EXPO_PUBLIC_API_URL=http://localhost:8080/api/v1 docker compose --profile local up --build
 ```
 
-3. Using npx expo start will work once the other two have been run once
+In PowerShell, set `$env:EXPO_PUBLIC_API_URL = "http://localhost:8080/api/v1"`
+before running `docker compose --profile local up --build`. The local database
+schema is initialized on first start and has no catalog rows by default. Stop
+the local stack with `docker compose --profile local down`; this keeps its data
+volume. Compose uses the hosted Render URL by default, overriding
+`EXPO_PUBLIC_API_URL` from `client/.env`. Use the root Compose file for both
+commands so Compose reuses the same project and ports.
+
+## Deploy the API on Render
+
+The root [`render.yaml`](render.yaml) defines the API Docker service and health
+check. After this branch is pushed to GitHub, create a Render Blueprint from the
+repository and select this branch. During setup, provide `DB_URL`, `DB_USER`,
+`DB_PASSWORD`, `APP_JWT_ISSUER`, `APP_CORS_ORIGINS`, and the GitHub OAuth values
+in Render's environment settings. Set the GitHub web callback to your deployed
+client's `/auth` URL. The Blueprint generates the API JWT signing key in Render;
+keep database and OAuth credentials out of Git. This deploys the API image; the
+Expo web client still needs its own hosting configuration.
+
+## Expo development
+
+Install Node.js 24.x and npm. From `client/`, run `npm ci`, then
+`npx expo start --web`; Expo reads `client/.env`. Set `EXPO_PUBLIC_API_URL` to a
+URL ending in `/api/v1`. Use `http://localhost:8080/api/v1` for a browser with
+the local API, `http://10.0.2.2:8080/api/v1` for an Android emulator, or the
+computer's reachable LAN address for a physical device. For the complete local
+Docker stack, use the Compose command above instead.
 
 ### Standalone APK testing (Pixel 9)
 
-Complete the Android SDK setup above and configure the root `.env` and
-`client/.env` with your database, JWT, and GitHub OAuth settings first.
-Each teammate runs the API on their own computer; Docker is not needed for this
-build when using the team's hosted Supabase database.
+Install Android Studio with Android SDK Platform 36, Build-Tools, Platform-Tools,
+and the emulator. Create and start a virtual device named `Pixel_9`. Configure the
+root `.env` and `client/.env`; Docker is not needed when the API uses the hosted
+Supabase database.
 
 1. Start **Pixel_9** in Android Studio → Device Manager.
-2. In a terminal opened in `api/`, start the backend and leave it running:
+2. From `api/`, load the root `.env` into the shell and start the backend:
 
    ```bash
-   bash load_env.sh
+   set -a
+   source ../.env
+   set +a
+   ./gradlew bootRun
    ```
 
 3. In another terminal opened in `client/`, build, install, and open the app:
@@ -83,21 +108,25 @@ The APK is saved at `client/android/app/build/outputs/apk/release/app-release.ap
 Rebuild with this command after code changes; this setup is for emulator testing,
 not production or physical phones.
 
-## How to Setup Spring Boot for development
+## Spring Boot development
 
-- From /api
-  - Use Java 21 and configure the root `.env` with database, JWT, and OAuth settings.
-  - Run `bash load_env.sh` to load the environment and start the API.
-  - Run `curl -i http://localhost:8080/api/v1/` for API information.
-  - Run `curl -i http://localhost:8080/actuator/health` for database readiness (200 UP or 503 DOWN).
-  - [Admin tools (PRD-6)](docs/admin-tools.md): provisioning, supported web/Android behavior, isolated test setup, and commands for reviewers.
-  - Run `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` for a page of database parts.
-  - Run `curl -i http://localhost:8080/api/v1/parts/{id}` for one part by UUID.
+Use Java 21. From `api/`, load the root `.env` and start the API:
 
-With the root `.env` configured, run `docker compose up --build` from `api/` to
-start the API and local Postgres. Compose supplies JWT/OAuth settings from `.env`
-and overrides database settings to use its container. For an image-only build,
-run `docker build -f api/Dockerfile .` from the repository root.
+```bash
+set -a
+source ../.env
+set +a
+./gradlew bootRun
+```
+
+To build the API Docker image manually, run
+`docker build -f api/Dockerfile .` from the repository root.
+
+- `curl -i http://localhost:8080/api/v1/` returns API information.
+- `curl -i http://localhost:8080/actuator/health` reports database readiness (200 UP or 503 DOWN).
+- `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` returns a catalog page.
+- `curl -i http://localhost:8080/api/v1/parts/{id}` returns a part by UUID.
+- [Admin tools (PRD-6)](docs/admin-tools.md) explains admin provisioning and supported app behavior.
 
 API docs: [Swagger UI](http://localhost:8080/swagger-ui/index.html) displays the
 handwritten contract at `/openapi.yaml`; SpringDoc's generated implemented routes
@@ -119,6 +148,8 @@ The catalog and admin user directory accept `q`, `page`, and `size`:
 - `GET /api/v1/parts?q=memory&page=0&size=10` searches public part names/categories.
 - `GET /api/v1/admin/users?q=member&page=0&size=10` searches user email/display name;
   it requires an API bearer token and a current database role of `ADMIN`.
+- `GET /api/v1/parts/price-range` returns listed-price bounds. Catalog search also
+  accepts inclusive `minPrice` and `maxPrice` filters.
 - Both directories also accept an exact record UUID in `q`. Private user results use
   `Cache-Control: no-store`.
 
@@ -126,15 +157,31 @@ These directory pages contain `content`, `page`, `size`, `totalElements`, and `t
 Page indexes start at 0; page size defaults to 10 and must be between 1 and 100.
 Catalog results sort by ID. An empty or out-of-range page returns empty content;
 invalid paging parameters return 400 Problem Details. See `docs/openapi.yaml` for
-the implemented routes and planned authenticated endpoints.
+the API contract and the compatibility endpoint still marked as planned.
 
 The authenticated build controller exposes `GET /api/v1/builds`, `POST /api/v1/builds`,
 `GET /api/v1/builds/{id}`, `PUT /api/v1/builds/{id}`, and `DELETE /api/v1/builds/{id}`.
-Build listing is paginated with `page` and `size`,
-and includes the authenticated user's builds at any stage, newest first.
-Creation and replacement accept a build name and selected part IDs or quantities; detail
-responses include the selected parts. Updates and deletion require ownership.
-Admin mutations remain planned, as marked in OpenAPI.
+Build listing is paginated and returns the signed-in user's saved builds, newest first.
+Builds store an optional budget and selected parts; updates and deletion require ownership.
+Administrators can update or delete users at `/api/v1/admin/users/{id}` and update or
+delete catalog parts at `/api/v1/parts/{id}`. Part deletion is rejected while a saved
+build references that part. Compatibility scoring remains planned.
+
+### CI and test coverage
+
+GitHub Actions checks the API build/tests and 70% JaCoCo line-coverage threshold,
+builds both Docker images, typechecks and tests the client, exports Android and web
+bundles, scans committed history with Gitleaks, and reports Detekt findings. From `api/`, run
+`./gradlew build --no-daemon --console=plain`; this runs the API tests and enforces
+the configured coverage threshold. Reports are written to
+`api/build/reports/jacoco/test/html/index.html` and
+`api/build/reports/jacoco/test/jacocoTestReport.xml`.
+
+From `client/`, reproduce the Expo CI steps with `npx tsc --noEmit`,
+`npm test -- --runInBand --coverage --forceExit`,
+`npx expo export --platform android --output-dir dist/android`, and
+`npx expo export --platform web --output-dir dist/web`.
+
 ### API tests
 
 Each running API instance uses at most 3 database connections and maintains a minimum
@@ -188,9 +235,9 @@ for Expo web and Android.
    emulators use `http://10.0.2.2:8080/api/v1`; physical devices need the computer's
    reachable LAN address. Web uses `http://localhost:8080/api/v1`.
 
-From `api/`, `bash load_env.sh` loads the root `.env` before starting Spring Boot.
-Expo loads `client/.env` when started from `client/`. Docker Compose loads the root
-`.env` into the API container while retaining its local database overrides.
+Expo reads `client/.env` when started from `client/`. Docker Compose loads the
+environment files for services it starts and applies its settings for the local
+database and API.
 
 The configured web and Android redirect URIs define the exact allowlist:
 the API selects the matching server-owned credentials and rejects other URIs.

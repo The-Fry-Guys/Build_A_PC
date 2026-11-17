@@ -5,24 +5,17 @@ URLs, release automation, and deployment access still need team confirmation.
 
 ## Deploy
 
-1. Review the release commit and passing teammate CI checks. Run the checks in
-   [admin tools](admin-tools.md#checks-for-the-reviewer-to-run); confirm the required
-   vertical slice separately. Create a tagged GitHub release for the approved commit.
-2. Deploy that exact commit to the Render API service using `api/Dockerfile` with
-   repository-root build context. Configure database credentials, signing key,
-   provider credentials/callbacks, and the HTTPS CORS origin through hosting secrets.
-   Never enable `e2e`; use the production profile.
-3. Publish matching web and Android builds with the reachable HTTPS API URL ending
-   in `/api/v1`. Frontend settings contain public client IDs only.
-4. Confirm `/actuator/health` returns 200/UP, then check sign-in, parts, and admin
-   denial for a regular account. Record tag, commit, deployment, and app versions.
-
-## Roll back and forward
-
-Select the previous known-good tagged deployment in Render and restore its matching
-web/app release when needed. Check database compatibility first; do not undo data or
-run destructive schema changes. Recheck health and sign-in. To roll forward, deploy
-the corrected tagged commit and repeat those checks. Rehearse on a test deployment.
+1. Ensure you're in the root of the project. To launch the app using the Render hosted
+   API, you can use this command: `docker compose up --build`. Please allow for
+   up to 3 minutes for the Render API to start up.
+   - If you're on MacOS or Linux or WSL you can use `curl -i https://build-a-pc-w99e.onrender.com/actuator/health`
+     to check if the API is successfully running.
+   - Once it is, refresh the app or the website.
+   - You can also click on `https://build-a-pc-w99e.onrender.com/` to see if Render API is actually up, **this is the most common issue so if something is not working check on this**
+2. If you have the `.env` files loaded into your project and want to host the API locally do:
+   `EXPO_PUBLIC_API_URL=http://localhost:8080/api/v1 docker compose --profile local up --build`
+3. After choosing which type of API hosing you'd like to access and running one of the commands
+   you can go to `http://localhost:8081` to view the frontend.
 
 ## Rotate a secret
 
@@ -52,3 +45,6 @@ client's error/retry state while unavailable; do not substitute fabricated data.
 
 Follow [README setup](../README.md) and [isolated acceptance tests](admin-tools.md#isolated-web-acceptance-test).
 The disposable e2e stack is for testing only. Stop it afterward to release port 8080.
+
+For the class visitor exercise, use the [onboarding checklist](onboarding.md) to
+record each command, result, blocker, host/visitor assignment, and triage owner.

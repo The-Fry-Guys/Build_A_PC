@@ -1,43 +1,9 @@
-import { useState } from 'react';
-import { Part } from '@/types/build';
+import { useContext } from 'react';
+import { BuildContext, useBuildState } from '@/hooks/build-context';
 
-/* Manages the local state for a user's PC build, allowing them to view parts and construct a pc to. */
+/** Shares the active build across screens, with a local fallback for isolated consumers. */
 export function useBuild() {
-    const [selectedParts, setSelectedParts] = useState<Part[]>([]);
-    const [buildName, setBuildName] = useState<string>('My Custom PC');
-
-    /* Adds a selected part to the build.
-     * If a part of the same category already exists, it is replaced to prevent invalid configurations. */
-    const addPart = (part: Part) => {
-        setSelectedParts((prev) => {
-            const filtered = prev.filter((p) => p.category !== part.category);
-            return [...filtered, part];
-        });
-    };
-
-    /* Removes a specific part from the user's current build using its unique ID. */
-    const removePart = (partId: string) => {
-        setSelectedParts((prev) => prev.filter((p) => p.part_id !== partId));
-    };
-
-    /* Resets the builder by removing all currently selected parts. */
-    const clearBuild = () => {
-        setSelectedParts([]);
-    };
-
-    /* Calculates the combined price of all parts currently in the build array. */
-    const getTotalPrice = (): number => {
-        return selectedParts.reduce((total, part) => total + part.price, 0);
-    };
-
-    /* Exposes the build state and modification functions to the client UI screens. */
-    return {
-        selectedParts,
-        buildName,
-        setBuildName,
-        addPart,
-        removePart,
-        clearBuild,
-        getTotalPrice,
-    };
+    const sharedBuild = useContext(BuildContext);
+    const localBuild = useBuildState();
+    return sharedBuild ?? localBuild;
 }
