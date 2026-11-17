@@ -33,11 +33,17 @@ class CatalogPartController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int,
         @RequestParam(required = false) q: String? = null,
+        @RequestParam(required = false) category: String? = null,
     ): CatalogPartPage {
         // Bound the SQL query and use a unique sort key so pages are deterministic.
         val pageable = directoryPage(page, size)
-        val parts = if (q.isNullOrBlank()) repository.findAll(pageable)
-        else repository.findAll(directorySearch(q, "name", "category"), pageable)
+        val parts = if (!category.isNullOrBlank()) {
+            repository.findByCategory(category, pageable)
+        } else if (!q.isNullOrBlank()) {
+            repository.findAll(directorySearch(q, "name", "category"), pageable)
+        } else {
+            repository.findAll(pageable)
+        }
 
         return CatalogPartPage(
             content = parts.content.map { it.toResponse() },

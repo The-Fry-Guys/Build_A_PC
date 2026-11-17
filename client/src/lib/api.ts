@@ -215,3 +215,21 @@ export function updateAdminPart(id: string, input: AdminPartInput): Promise<Cata
 export function deleteAdminPart(id: string): Promise<void> {
   return request(`/parts/${encodeURIComponent(id)}`, { method: 'DELETE' }, true);
 }
+
+/** Updates the signed-in user's profile display name. */
+export function updateProfile(displayName: string): Promise<AppUser> {
+  return request<AppUser>(
+    '/me',
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName }),
+    },
+    true,
+  );
+}
+
+/** Deletes the signed-in user's account. */
+export function deleteAccount(): Promise<void> {
+  return request<void>('/me', { method: 'DELETE' }, true);
+}
