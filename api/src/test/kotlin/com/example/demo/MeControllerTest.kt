@@ -57,7 +57,8 @@ class MeControllerTest @Autowired constructor(private val mvc: MockMvc) {
 
         val updateRequest = ProfileUpdateRequest(displayName = "New Name")
         `when`(userRepository.findById(eq(userId) ?: userId)).thenReturn(Optional.of(originalUser))
-        `when`(accountService.updateProfile(eq(userId) ?: userId, any(ProfileUpdateRequest::class.java) ?: updateRequest))
+        `when`(accountService.updateProfile(eq(userId) ?: userId, any(ProfileUpdateRequest::class.java)
+            ?: updateRequest))
             .thenReturn(updatedUser)
 
         mvc.perform(
