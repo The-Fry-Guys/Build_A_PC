@@ -61,6 +61,9 @@ class JwtSecurityTests {
     @MockitoBean
     private lateinit var catalog: CatalogPartRepository
 
+    @MockitoBean
+    private lateinit var accountService: AccountService
+
     private val userId = UUID.randomUUID()
 
     private val user = User(
