@@ -10,23 +10,23 @@ Project 3 for CST438 Software Engineering
 
 ## Start the project with Docker Compose
 
-You need Git and Docker Engine or Docker Desktop with Docker Compose v2. Docker builds and runs
-the Expo web client, Spring Boot API, and local PostgreSQL database; you do not
-need to install Node.js or Java on the host for this quickstart.
+You need Git and Docker Engine or Docker Desktop with Docker Compose v2. By
+default, Docker runs the Expo web client locally and connects it to the hosted
+API at `https://build-a-pc-w99e.onrender.com`; you do not need Node.js or Java on
+the host.
 
-1. Clone the repository and create local environment files:
+1. Clone the repository and create the local environment files:
 
    ```bash
    git clone https://github.com/The-Fry-Guys/Build_A_PC.git
    cd Build_A_PC
    cp .env.example .env
    cp client/.env.example client/.env
-   openssl rand -base64 32
    ```
 
-   Put the generated value in `.env` as `APP_JWT_SECRET_BASE64`, and replace
-   `DB_PASSWORD` with a local password. GitHub sign-in additionally needs the
-   OAuth settings described below; the app and API can start without them.
+   Set `DB_PASSWORD` in the root `.env` for the optional local API profile.
+   GitHub sign-in needs the client OAuth settings described below; the catalog
+   can be viewed without signing in.
 
 2. Build and start the services from the repository root:
 
@@ -34,14 +34,23 @@ need to install Node.js or Java on the host for this quickstart.
    docker compose up --build
    ```
 
-3. Open the app at [http://localhost:8081](http://localhost:8081). Check API and
-   database health at [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health).
-   Press `Ctrl+C` to stop; `docker compose down` stops containers and preserves
-   the local database volume.
+3. Open the app at [http://localhost:8081](http://localhost:8081). Check the
+   hosted API at [https://build-a-pc-w99e.onrender.com/actuator/health](https://build-a-pc-w99e.onrender.com/actuator/health).
+   Press `Ctrl+C` to stop; `docker compose down` stops the client container.
 
-The local database schema is initialized on its first start. It has no catalog
-rows by default, so import catalog data to populate the Parts page. To start over,
-use Docker volume commands only if you intentionally want to delete local data.
+To run the API and PostgreSQL locally instead, create the root `.env` from
+`.env.example`, generate a value with `openssl rand -base64 32`, and put it in
+`.env` as `APP_JWT_SECRET_BASE64`. Then start the local profile (Bash/zsh):
+
+```bash
+EXPO_PUBLIC_API_URL=http://localhost:8080/api/v1 docker compose --profile local up --build
+```
+
+In PowerShell, set `$env:EXPO_PUBLIC_API_URL = "http://localhost:8080/api/v1"`
+before running `docker compose --profile local up --build`. The local database
+schema is initialized on first start and contains no catalog rows by default.
+The Render API must allow `http://localhost:8081` in its CORS origins for the
+default hosted-API setup.
 
 ## Deploy the API on Render
 
