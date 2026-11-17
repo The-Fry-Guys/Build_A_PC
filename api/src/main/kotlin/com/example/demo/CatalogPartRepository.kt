@@ -15,6 +15,20 @@ interface CatalogPartRepository : JpaRepository<CatalogPart, UUID>, JpaSpecifica
     /** Returns catalog parts in a requested category using bounded pagination. */
     fun findByCategory(category: String, pageable: Pageable): Page<CatalogPart>
 
+    /** Returns catalog parts ordered by how many units appear in saved builds. */
+    @Query(
+        value = """
+            SELECT part.*
+            FROM public.catalog_parts part
+            LEFT JOIN public.build_parts selection ON selection.catalog_part_id = part.id
+            GROUP BY part.id
+            ORDER BY COALESCE(SUM(selection.quantity), 0) DESC, part.id ASC
+        """,
+        countQuery = "SELECT COUNT(*) FROM public.catalog_parts",
+        nativeQuery = true,
+    )
+    fun findMostUsed(pageable: Pageable): Page<CatalogPart>
+
     /** Serializes administrative deletion against inserts of build selections referencing the part. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select part from CatalogPart part where part.id = :id")

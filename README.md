@@ -7,6 +7,52 @@ Project 3 for CST438 Software Engineering
 [Security](docs/security.md) · [Runbook](docs/runbook.md) ·
 [Demo](docs/demo.md) · [Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
 
+## Start the project with Docker Compose
+
+You need Git and Docker Engine or Docker Desktop with Docker Compose v2. Docker builds and runs
+the Expo web client, Spring Boot API, and local PostgreSQL database; you do not
+need to install Node.js or Java on the host for this quickstart.
+
+1. Clone the repository and create local environment files:
+
+   ```bash
+   git clone https://github.com/The-Fry-Guys/Build_A_PC.git
+   cd Build_A_PC
+   cp .env.example .env
+   cp client/.env.example client/.env
+   openssl rand -base64 32
+   ```
+
+   Put the generated value in `.env` as `APP_JWT_SECRET_BASE64`, and replace
+   `DB_PASSWORD` with a local password. GitHub sign-in additionally needs the
+   OAuth settings described below; the app and API can start without them.
+
+2. Build and start the services from the repository root:
+
+   ```bash
+   docker compose up --build
+   ```
+
+3. Open the app at [http://localhost:8081](http://localhost:8081). Check API and
+   database health at [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health).
+   Press `Ctrl+C` to stop; `docker compose down` stops containers and preserves
+   the local database volume.
+
+The local database schema is initialized on its first start. It has no catalog
+rows by default, so import catalog data to populate the Parts page. To start over,
+use Docker volume commands only if you intentionally want to delete local data.
+
+## Deploy the API on Render
+
+The root [`render.yaml`](render.yaml) defines the API Docker service and health
+check. After this branch is pushed to GitHub, create a Render Blueprint from the
+repository and select this branch. During setup, provide `DB_URL`, `DB_USER`,
+`DB_PASSWORD`, `APP_JWT_ISSUER`, `APP_CORS_ORIGINS`, and the GitHub OAuth values
+in Render's environment settings. Set the GitHub web callback to your deployed
+client's `/auth` URL. The Blueprint generates the API JWT signing key in Render;
+keep database and OAuth credentials out of Git. This deploys the API image; the
+Expo web client still needs its own hosting configuration.
+
 ## How to Setup Expo for development
 
 - Install Node.js **24.x** (matching Expo CI), npm, and **Java 21**.
@@ -94,10 +140,9 @@ not production or physical phones.
   - Run `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` for a page of database parts.
   - Run `curl -i http://localhost:8080/api/v1/parts/{id}` for one part by UUID.
 
-With the root `.env` configured, run `docker compose up --build` from `api/` to
-start the API and local Postgres. Compose supplies JWT/OAuth settings from `.env`
-and overrides database settings to use its container. For an image-only build,
-run `docker build -f api/Dockerfile .` from the repository root.
+For API-only local development without Docker, run `bash load_env.sh` from `api/`
+after configuring the root `.env`. To build the API Docker image manually, run
+`docker build -f api/Dockerfile .` from the repository root.
 
 API docs: [Swagger UI](http://localhost:8080/swagger-ui/index.html) displays the
 handwritten contract at `/openapi.yaml`; SpringDoc's generated implemented routes

@@ -32,6 +32,12 @@ export default function AppTabs() {
           <TabTrigger name="alex-pc" href={'/alex-pc' as Href} asChild>
             <TabButton>My Build</TabButton>
           </TabTrigger>
+          <TabTrigger name="builds" href={'/builds' as Href} asChild>
+            <TabButton>Builds</TabButton>
+          </TabTrigger>
+          <TabTrigger name="profile" href={'/profile' as Href} asChild>
+            <TabButton>Profile</TabButton>
+          </TabTrigger>
           <TabTrigger name="admin" href="/admin" asChild>
             <TabButton hidden={user?.role !== 'ADMIN'}>Admin</TabButton>
           </TabTrigger>

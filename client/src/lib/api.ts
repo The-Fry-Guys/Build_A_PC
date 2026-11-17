@@ -151,12 +151,43 @@ export interface DirectoryPage<T> {
   totalPages: number;
 }
 
+/** Summary fields returned for one of the signed-in user's saved builds. */
+export interface SavedBuild {
+  build_id: string;
+  user_id: string;
+  name: string;
+  budget: number | null;
+  total_price: number;
+  created_at: string;
+}
+
+/** A saved build detail, including its current selected parts. */
+export interface SavedBuildDetail {
+  id: string;
+  name: string;
+  budget: number | null;
+  parts: Array<CatalogPart & { quantity: number }>;
+  createdAt: string;
+}
+
+/** Fields saved when finalizing a new build or updating an existing one. */
+export interface SavedBuildInput {
+  name: string;
+  budget: number | null;
+  parts: Array<{ partId: string; quantity: number }>;
+}
+
 /** Parameters shared by both read-only directories. */
 export interface DirectoryRequest {
   q: string;
   page: number;
   size?: number;
   signal?: AbortSignal;
+}
+
+/** Optional category filter accepted by the public catalog route. */
+export interface CatalogRequest extends DirectoryRequest {
+  category?: string;
 }
 
 /** Encodes search terms so literal punctuation cannot become URL parameters. */
@@ -170,8 +201,34 @@ export function getAdminUsers(input: DirectoryRequest): Promise<DirectoryPage<Ap
 }
 
 /** Searches the public catalog without attaching private account credentials. */
-export function getCatalogParts(input: DirectoryRequest): Promise<DirectoryPage<CatalogPart>> {
-  return request(directoryPath('/parts', input), { method: 'GET', signal: input.signal }, false);
+export function getCatalogParts(input: CatalogRequest): Promise<DirectoryPage<CatalogPart>> {
+  const params = new URLSearchParams({
+    q: input.q.trim(),
+    page: String(input.page),
+    size: String(input.size ?? 10),
+  });
+  if (input.category) params.set('category', input.category);
+  return request(`/parts?${params.toString()}`, { method: 'GET', signal: input.signal }, false);
+}
+
+/** Loads the current user's paginated builds, optionally filtered by name. */
+export function getSavedBuilds(input: DirectoryRequest): Promise<DirectoryPage<SavedBuild>> {
+  return request(directoryPath('/builds', input), { method: 'GET', signal: input.signal }, true);
+}
+
+/** Loads a saved build's selected parts before opening it for editing. */
+export function getSavedBuild(id: string): Promise<SavedBuildDetail> {
+  return request(`/builds/${encodeURIComponent(id)}`, { method: 'GET' }, true);
+}
+
+/** Creates a named saved build for the signed-in user. */
+export function createSavedBuild(input: SavedBuildInput): Promise<SavedBuildDetail> {
+  return request('/builds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }, true);
+}
+
+/** Updates an existing saved build owned by the signed-in user. */
+export function updateSavedBuild(id: string, input: SavedBuildInput): Promise<SavedBuildDetail> {
+  return request(`/builds/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }, true);
 }
 
 /** Admin user fields may be edited without granting access to change account roles. */

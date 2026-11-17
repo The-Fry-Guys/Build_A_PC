@@ -1,7 +1,7 @@
 import { Redirect, useFocusEffect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useCallback, useState, type PropsWithChildren } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSession } from '@/auth/session-provider';
@@ -138,7 +138,8 @@ function AdminDirectory({ kind, currentUserId }: { kind: DirectoryKind; currentU
       placeholderTextColor={theme.textSecondary} autoCapitalize="none" autoCorrect={false}
       style={[styles.input, { color: theme.text, borderColor: theme.textSecondary, backgroundColor: theme.background }]} />
     {kind === 'parts' && <AdminButton onPress={() => { setEditing(null); setCreating(true); setFormError(''); setPartName(''); setCategory(''); setPrice(''); }}>Create part</AdminButton>}
-    {(editing || creating) && <ThemedView type="backgroundElement" style={styles.form}>
+    {(editing || creating) ? <View>
+      <ThemedView type="backgroundElement" style={styles.form}>
       <ThemedText type="smallBold">{creating ? 'Create part' : kind === 'users' ? 'Edit user' : 'Edit part'}</ThemedText>
       {kind === 'users' ? <>
         <ThemedText type="small">Email</ThemedText>
@@ -155,27 +156,31 @@ function AdminDirectory({ kind, currentUserId }: { kind: DirectoryKind; currentU
       </>}
       {formError ? <ThemedText accessibilityRole="alert">{formError}</ThemedText> : null}
       <View style={styles.sections}><AdminButton disabled={saving} onPress={() => { void submit(); }}>{saving ? 'Saving…' : 'Save'}</AdminButton><AdminButton disabled={saving} onPress={clearForm}>Cancel</AdminButton></View>
-    </ThemedView>}
-    {mutationError && <View accessibilityRole="alert" style={styles.message}><ThemedText>{mutationError.message}</ThemedText></View>}
-    {deleting && <ThemedText accessibilityLiveRegion="polite">Deleting…</ThemedText>}
-    <View accessibilityLiveRegion="polite" style={styles.status}>
-      {busy ? <ActivityIndicator accessibilityLabel={`Loading ${kind}`} /> :
-        <ThemedText type="small">{data?.totalElements ?? 0} {kind} found</ThemedText>}
-    </View>
-    {directory.error && <View accessibilityRole="alert" style={styles.message}>
-      <ThemedText>{directory.error.message}</ThemedText>
-      <AdminButton onPress={() => { void directory.refetch(); }}>Retry results</AdminButton>
-    </View>}
-    <FlatList data={records} keyExtractor={(record) => 'email' in record ? record.id : record.part_id}
-      renderItem={({ item }) => <RecordRow record={item} wide={wide} onEdit={() => startEdit(item)} onDelete={() => confirmDelete(item)} showDelete={!('email' in item && item.id === currentUserId)} />}
-      contentContainerStyle={styles.results} keyboardShouldPersistTaps="handled"
-      ListEmptyComponent={!busy && !directory.error ? <ThemedText>No {kind} found. Try another search.</ThemedText> : undefined} />
-    <View style={styles.pagination}>
-      <AdminButton disabled={busy || directory.page === 0} onPress={() => directory.setPage(directory.page - 1)}>Previous</AdminButton>
-      <ThemedText type="small">Page {data?.totalPages ? directory.page + 1 : 0} of {data?.totalPages ?? 0}</ThemedText>
-      <AdminButton disabled={busy || !data || directory.page + 1 >= data.totalPages}
-        onPress={() => directory.setPage(directory.page + 1)}>Next</AdminButton>
-    </View>
+      </ThemedView>
+      {mutationError ? <View accessibilityRole="alert" style={styles.message}><ThemedText>{mutationError instanceof Error ? mutationError.message : String(mutationError)}</ThemedText></View> : null}
+    </View> : <>
+      {mutationError ? <View accessibilityRole="alert" style={styles.message}><ThemedText>{mutationError instanceof Error ? mutationError.message : String(mutationError)}</ThemedText></View> : null}
+      {deleting && <ThemedText accessibilityLiveRegion="polite">Deleting…</ThemedText>}
+      <View accessibilityLiveRegion="polite" style={styles.status}>
+        {busy ? <ActivityIndicator accessibilityLabel={`Loading ${kind}`} /> :
+          <ThemedText type="small">{data?.totalElements ?? 0} {kind} found</ThemedText>}
+      </View>
+      {directory.error && <View accessibilityRole="alert" style={styles.message}>
+        <ThemedText>{directory.error.message}</ThemedText>
+        <AdminButton onPress={() => { void directory.refetch(); }}>Retry results</AdminButton>
+      </View>}
+      <View style={styles.results}>
+        {records.map((record) => <RecordRow key={'email' in record ? record.id : record.part_id} record={record} wide={wide}
+          onEdit={() => startEdit(record)} onDelete={() => confirmDelete(record)} showDelete={!('email' in record && record.id === currentUserId)} />)}
+        {!busy && !directory.error && records.length === 0 && <ThemedText>No {kind} found. Try another search.</ThemedText>}
+      </View>
+      <View style={styles.pagination}>
+        <AdminButton disabled={busy || directory.page === 0} onPress={() => directory.setPage(directory.page - 1)}>Previous</AdminButton>
+        <ThemedText type="small">Page {data?.totalPages ? directory.page + 1 : 0} of {data?.totalPages ?? 0}</ThemedText>
+        <AdminButton disabled={busy || !data || directory.page + 1 >= data.totalPages}
+          onPress={() => directory.setPage(directory.page + 1)}>Next</AdminButton>
+      </View>
+    </>}
   </View>;
 }
 
@@ -197,6 +202,7 @@ export default function AdminScreen() {
   return <ThemedView style={styles.screen}>
     <Head><title>Admin tools | Build A PC</title></Head>
     <SafeAreaView style={styles.safeArea}>
+    <ScrollView style={styles.pageScroll} contentContainerStyle={styles.pageContent} keyboardShouldPersistTaps="handled">
     <View style={styles.heading}><ThemedText type="subtitle" accessibilityRole="header">Admin tools</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">View and search account and catalog information.</ThemedText></View>
     <View style={styles.sections}>
@@ -206,17 +212,20 @@ export default function AdminScreen() {
       <AdminButton onPress={() => { void logout(); }}>Log out</AdminButton>
     </View>
     <AdminDirectory key={`${user.id}:${kind}`} kind={kind} currentUserId={user.id} />
+    </ScrollView>
   </SafeAreaView></ThemedView>;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, alignItems: 'center' },
-  safeArea: { flex: 1, width: '100%', maxWidth: 1100, paddingHorizontal: 20, paddingTop: 88, paddingBottom: BottomTabInset + 24, gap: 16 },
+  screen: { flex: 1, minHeight: 0, alignItems: 'center' },
+  safeArea: { flex: 1, minHeight: 0, width: '100%', maxWidth: 1100 },
+  pageScroll: { flex: 1, minHeight: 0, width: '100%' },
+  pageContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12, paddingBottom: BottomTabInset + 24, gap: 12 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   heading: { gap: 8 },
   sections: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   button: { minHeight: 44, minWidth: 80, padding: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  directory: { flex: 1, gap: 8 },
+  directory: { width: '100%', gap: 8 },
   input: { borderWidth: 1, borderRadius: 8, padding: 12, minHeight: 48, fontSize: 16 },
   status: { minHeight: 28, justifyContent: 'center' },
   message: { gap: 8, paddingVertical: 12 },

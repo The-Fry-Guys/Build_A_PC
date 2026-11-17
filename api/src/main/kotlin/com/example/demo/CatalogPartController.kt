@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.jpa.domain.Specification
 import java.math.BigDecimal
 import java.util.UUID
 import java.time.Instant
@@ -27,7 +29,7 @@ class CatalogPartController(
     private val repository: CatalogPartRepository,
     private val jdbc: JdbcTemplate,
 ) {
-    /** Returns a validated, bounded page of catalog parts sorted by ID. */
+    /** Returns a bounded page of popular parts or filtered catalog results. */
     @GetMapping
     fun getParts(
         @RequestParam(defaultValue = "0") page: Int,
@@ -35,14 +37,18 @@ class CatalogPartController(
         @RequestParam(required = false) q: String? = null,
         @RequestParam(required = false) category: String? = null,
     ): CatalogPartPage {
-        // Bound the SQL query and use a unique sort key so pages are deterministic.
+        // Validate the requested page before using either catalog query.
         val pageable = directoryPage(page, size)
-        val parts = if (!category.isNullOrBlank()) {
-            repository.findByCategory(category, pageable)
-        } else if (!q.isNullOrBlank()) {
-            repository.findAll(directorySearch(q, "name", "category"), pageable)
-        } else {
-            repository.findAll(pageable)
+        val search = q?.takeIf { it.isNotBlank() }
+            ?.let { directorySearch<CatalogPart>(it, "name", "category") }
+        val selectedCategory = category?.takeIf { it.isNotBlank() }
+        val categoryFilter = selectedCategory?.let { selected ->
+            Specification<CatalogPart> { root, _, builder -> builder.equal(root.get<String>("category"), selected) }
+        }
+        val parts = when {
+            search == null && selectedCategory == null -> repository.findMostUsed(PageRequest.of(page, size))
+            search == null -> repository.findByCategory(selectedCategory!!, pageable)
+            else -> repository.findAll(listOfNotNull(search, categoryFilter).reduce { current, next -> current.and(next) }, pageable)
         }
 
         return CatalogPartPage(

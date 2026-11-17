@@ -4,6 +4,7 @@ export interface Part {
     name: string;
     price: number | null;
     created_at?: string;
+    quantity?: number;
 }
 
 export interface CpuDetails extends Part {
