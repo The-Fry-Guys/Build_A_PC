@@ -3,13 +3,13 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 
 import { useSession } from '@/auth/session-provider';
-import { ApiError, getAdminUsers, getCatalogParts, type AppUser } from '@/lib/api';
+import { ApiError, createAdminPart, deleteAdminPart, deleteAdminUser, getAdminUsers, getCatalogParts, updateAdminPart, updateAdminUser, type AppUser } from '@/lib/api';
 
 import { clearAdminQueries } from '../query-provider';
 import { useAdminDirectory } from '../use-admin-directory';
 
 jest.mock('@/auth/session-provider', () => ({ useSession: jest.fn() }));
-jest.mock('@/lib/api', () => ({ ...jest.requireActual('@/lib/api'), getAdminUsers: jest.fn(), getCatalogParts: jest.fn() }));
+jest.mock('@/lib/api', () => ({ ...jest.requireActual('@/lib/api'), getAdminUsers: jest.fn(), getCatalogParts: jest.fn(), createAdminPart: jest.fn(), deleteAdminPart: jest.fn(), deleteAdminUser: jest.fn(), updateAdminPart: jest.fn(), updateAdminUser: jest.fn() }));
 
 const admin: AppUser = { id: 'admin-id', email: 'admin@example.test', display_name: null, role: 'ADMIN', created_at: '2026-01-01T00:00:00Z' };
 const expire = jest.fn().mockResolvedValue(undefined);
@@ -25,6 +25,11 @@ beforeEach(() => {
   jest.mocked(useSession).mockReturnValue({ user: admin, loading: false, error: null, login: jest.fn(), retry: refresh, refresh, expire, logout: jest.fn() });
   jest.mocked(getAdminUsers).mockResolvedValue(data);
   jest.mocked(getCatalogParts).mockResolvedValue({ ...data, content: [] });
+  jest.mocked(createAdminPart).mockResolvedValue({ part_id: 'new-part', name: 'New part', category: 'memory', price: 12, created_at: admin.created_at });
+  jest.mocked(updateAdminPart).mockResolvedValue({ part_id: 'part-id', name: 'Updated part', category: 'memory', price: 12, created_at: admin.created_at });
+  jest.mocked(updateAdminUser).mockResolvedValue(admin);
+  jest.mocked(deleteAdminPart).mockResolvedValue(undefined);
+  jest.mocked(deleteAdminUser).mockResolvedValue(undefined);
 });
 
 afterEach(() => { client.clear(); jest.useRealTimers(); });
@@ -83,4 +88,32 @@ test('clearing one account retains another account cache', async () => {
   await clearAdminQueries(client, admin.id);
   expect(client.getQueryData(['admin', admin.id, 'users'])).toBeUndefined();
   expect(client.getQueryData(['admin', 'other-account', 'users'])).toEqual(data);
+});
+
+test('admin mutations call APIs and invalidate only the signed-in account directory', async () => {
+  client.setQueryData(['admin', admin.id, 'users', '', 0], data);
+  client.setQueryData(['admin', 'other-account', 'users'], data);
+  const { result } = await renderHook(() => useAdminDirectory('parts', true), { wrapper: Wrapper });
+  await act(async () => {
+    await result.current.mutations.userUpdate.mutateAsync({ id: 'user-id', input: { email: 'ada@example.test', displayName: 'Ada' } });
+    await result.current.mutations.partCreate.mutateAsync({ name: 'New part', category: 'memory', price: 12 });
+    await result.current.mutations.partUpdate.mutateAsync({ id: 'part-id', input: { name: 'Updated part', category: 'memory', price: 12 } });
+    await result.current.mutations.userDelete.mutateAsync('user-id');
+    await result.current.mutations.partDelete.mutateAsync('part-id');
+  });
+  expect(updateAdminUser).toHaveBeenCalledWith('user-id', { email: 'ada@example.test', displayName: 'Ada' });
+  expect(createAdminPart).toHaveBeenCalledWith({ name: 'New part', category: 'memory', price: 12 });
+  expect(updateAdminPart).toHaveBeenCalledWith('part-id', { name: 'Updated part', category: 'memory', price: 12 });
+  expect(deleteAdminUser).toHaveBeenCalledWith('user-id');
+  expect(deleteAdminPart).toHaveBeenCalledWith('part-id');
+  expect(client.getQueryData(['admin', 'other-account', 'users'])).toEqual(data);
+});
+
+test('mutation permission failures clear the current account cache and refresh access', async () => {
+  jest.mocked(deleteAdminPart).mockRejectedValueOnce(new ApiError(403, 'Access ended'));
+  client.setQueryData(['admin', admin.id, 'users'], data);
+  const { result } = await renderHook(() => useAdminDirectory('parts', true), { wrapper: Wrapper });
+  await act(async () => { await expect(result.current.mutations.partDelete.mutateAsync('part-id')).rejects.toThrow('Access ended'); });
+  await waitFor(() => expect(refresh).toHaveBeenCalled());
+  expect(client.getQueryData(['admin', admin.id, 'users'])).toBeUndefined();
 });

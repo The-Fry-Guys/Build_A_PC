@@ -101,7 +101,7 @@ async function request<T>(
     body = await response.json();
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    if (response.ok) {
+    if (response.ok && response.status !== 204) {
       throw new ApiError(502, 'The API returned an invalid JSON response.');
     }
   }
@@ -172,4 +172,46 @@ export function getAdminUsers(input: DirectoryRequest): Promise<DirectoryPage<Ap
 /** Searches the public catalog without attaching private account credentials. */
 export function getCatalogParts(input: DirectoryRequest): Promise<DirectoryPage<CatalogPart>> {
   return request(directoryPath('/parts', input), { method: 'GET', signal: input.signal }, false);
+}
+
+/** Admin user fields may be edited without granting access to change account roles. */
+export interface UpdateAdminUserInput {
+  email: string;
+  displayName: string | null;
+}
+
+/** Editable catalog fields used for creating and updating a part. */
+export interface AdminPartInput {
+  category: string;
+  name: string;
+  price: number | null;
+}
+
+/** Updates an account's email and display name. The server retains the current role. */
+export function updateAdminUser(id: string, input: UpdateAdminUserInput): Promise<AppUser> {
+  return request(`/admin/users/${encodeURIComponent(id)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+  }, true);
+}
+
+/** Deletes an account by its public identifier. */
+export function deleteAdminUser(id: string): Promise<void> {
+  return request(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' }, true);
+}
+
+/** Creates a catalog part. */
+export function createAdminPart(input: AdminPartInput): Promise<CatalogPart> {
+  return request('/parts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }, true);
+}
+
+/** Updates editable catalog fields. */
+export function updateAdminPart(id: string, input: AdminPartInput): Promise<CatalogPart> {
+  return request(`/parts/${encodeURIComponent(id)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+  }, true);
+}
+
+/** Deletes a catalog part by its public identifier. */
+export function deleteAdminPart(id: string): Promise<void> {
+  return request(`/parts/${encodeURIComponent(id)}`, { method: 'DELETE' }, true);
 }

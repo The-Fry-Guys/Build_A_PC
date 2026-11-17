@@ -4,6 +4,7 @@ import io.restassured.RestAssured.given
 import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.hasSize
 import org.hamcrest.Matchers.nullValue
+import io.restassured.http.ContentType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -106,6 +107,91 @@ class AdminDirectoryIntegrationTests {
                     .statusCode(400).contentType("application/problem+json")
             }
         }
+    }
+
+    /** User updates expose only approved fields, validate input, and protect the active admin. */
+    @Test
+    fun `admin can edit and delete users without editing roles or deleting self`() {
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON)
+            .body("""{"email":"updated@example.test","displayName":"Updated Member","role":"ADMIN"}""")
+            .put("/api/v1/admin/users/${regular.id}").then().statusCode(200)
+            .body("email", equalTo("updated@example.test"))
+            .body("display_name", equalTo("Updated Member"))
+            .body("role", equalTo("USER"))
+
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON)
+            .body("""{"email":"admin@example.test","displayName":"Other"}""")
+            .put("/api/v1/admin/users/${regular.id}").then().statusCode(409)
+            .contentType("application/problem+json")
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON)
+            .body("""{"email":"not-an-email","displayName":"Member"}""")
+            .put("/api/v1/admin/users/${regular.id}").then().statusCode(400)
+            .contentType("application/problem+json")
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON)
+            .body("""{"email":"valid@example.test","displayName":"Member"}""")
+            .put("/api/v1/admin/users/${java.util.UUID.randomUUID()}").then().statusCode(404)
+
+        given().port(port).auth().oauth2(token).delete("/api/v1/admin/users/${admin.id}")
+            .then().statusCode(409).contentType("application/problem+json")
+        given().port(port).auth().oauth2(token).delete("/api/v1/admin/users/${regular.id}")
+            .then().statusCode(204)
+        kotlin.test.assertNull(users.findById(regular.id!!).orElse(null))
+    }
+
+    /** User mutation routes keep database-backed admin authorization and missing-ID semantics. */
+    @Test
+    fun `user mutations require an administrator`() {
+        val body = """{"email":"member@example.test","displayName":"Member"}"""
+        given().port(port).contentType(ContentType.JSON).body(body)
+            .put("/api/v1/admin/users/${regular.id}").then().statusCode(401)
+        given().port(port).auth().oauth2(tokens.issueFor(regular)).contentType(ContentType.JSON).body(body)
+            .put("/api/v1/admin/users/${regular.id}").then().statusCode(403)
+        given().port(port).auth().oauth2(tokens.issueFor(regular)).delete("/api/v1/admin/users/${regular.id}")
+            .then().statusCode(403)
+    }
+
+    /** Catalog mutations validate payloads and refuse deletion while saved builds reference a part. */
+    @Test
+    fun `admin can create edit and safely delete catalog parts`() {
+        val payload = """{"category":"cpu","name":"New CPU","price":99.95}"""
+        given().port(port).contentType(ContentType.JSON).body(payload).post("/api/v1/parts")
+            .then().statusCode(401)
+        given().port(port).auth().oauth2(tokens.issueFor(regular)).contentType(ContentType.JSON).body(payload)
+            .post("/api/v1/parts").then().statusCode(403)
+        val id = given().port(port).auth().oauth2(token).contentType(ContentType.JSON).body(payload)
+            .post("/api/v1/parts").then().statusCode(201).body("category", equalTo("cpu"))
+            .body("name", equalTo("New CPU")).extract().path<String>("part_id")
+        jdbc.update("INSERT INTO public.cpu_details (part_id) VALUES (?)", java.util.UUID.fromString(id))
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON)
+            .body("""{"category":"invalid","name":"Bad part","price":-1}""")
+            .post("/api/v1/parts").then().statusCode(400).contentType("application/problem+json")
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON)
+            .body("""{"category":"memory","name":"Updated CPU","price":120.00}""")
+            .put("/api/v1/parts/$id").then().statusCode(409).contentType("application/problem+json")
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON)
+            .body("""{"category":"cpu","name":"Updated CPU","price":120.00}""")
+            .put("/api/v1/parts/$id").then().statusCode(200)
+            .body("category", equalTo("cpu")).body("name", equalTo("Updated CPU"))
+        given().port(port).auth().oauth2(token).contentType(ContentType.JSON).body(payload)
+            .put("/api/v1/parts/${java.util.UUID.randomUUID()}").then().statusCode(404)
+        given().port(port).auth().oauth2(token).delete("/api/v1/parts/$id").then().statusCode(204)
+        given().port(port).auth().oauth2(token).delete("/api/v1/parts/$id").then().statusCode(404)
+
+        val referencedPart = parts.findAll().first()
+        val buildId = java.util.UUID.randomUUID()
+        jdbc.update(
+            "INSERT INTO public.pc_builds (id, user_id, name) VALUES (?, ?, ?)",
+            buildId, regular.id, "Reference fixture",
+        )
+        jdbc.update(
+            "INSERT INTO public.build_parts (build_id, catalog_part_id, quantity) VALUES (?, ?, ?)",
+            buildId, referencedPart.id, 1,
+        )
+        val conflict = given().port(port).auth().oauth2(token)
+            .delete("/api/v1/parts/${referencedPart.id}").then().statusCode(409)
+            .contentType("application/problem+json").extract().asString()
+        kotlin.test.assertTrue(conflict.contains("selected by one or more saved builds"))
+        kotlin.test.assertTrue(parts.existsById(referencedPart.id))
     }
 
     /** A normal application context must never contain the test token controller. */
