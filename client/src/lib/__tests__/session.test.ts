@@ -5,10 +5,21 @@ const user: AppUser = { id: 'user-1', email: 'user@example.test', display_name: 
 const input = { code: 'code', codeVerifier: 'v'.repeat(43), redirectUri: 'http://localhost:8081/auth' };
 
 function setup(token: string | null = 'jwt') {
-  const store = { get: jest.fn(async () => token), set: jest.fn(async (value: string) => { token = value; }), clear: jest.fn(async () => { token = null; }) };
+  const store = {
+    get: jest.fn(async () => token),
+    set: jest.fn(async (value: string) => { token = value; }),
+    clear: jest.fn(async () => { token = null; }),
+  };
   const getMe = jest.fn(async () => user);
   const exchange = jest.fn(async () => ({ token: 'new-jwt', user }));
-  return { session: new Session({ store, getMe, exchange }), store, getMe, exchange };
+  const exchangeGoogle = jest.fn(async () => ({ token: 'google-jwt', user }));
+  return {
+    session: new Session({ store, getMe, exchange, exchangeGoogle }),
+    store,
+    getMe,
+    exchange,
+    exchangeGoogle,
+  };
 }
 
 function deferred<T>() {
@@ -143,4 +154,82 @@ test('a rejected session with blocked storage reports cleanup failure', async ()
   await session.restore();
   expect(session.getSnapshot().error).toContain('could not be cleared');
   expect(session.getSnapshot().loading).toBe(false);
+});
+
+test('Google login stores the app token before loading me', async () => {
+  const { session, store, getMe, exchange, exchangeGoogle } = setup(null);
+
+  getMe.mockImplementation(async () => {
+    expect(await store.get()).toBe('google-jwt');
+    return user;
+  });
+
+  await session.loginGoogle(input);
+
+  expect(exchangeGoogle).toHaveBeenCalledWith(input);
+  expect(exchange).not.toHaveBeenCalled();
+  expect(getMe).toHaveBeenCalledTimes(1);
+  expect(session.getSnapshot()).toEqual({ user, loading: false, error: null });
+});
+
+test('GitHub login still uses its original exchange', async () => {
+  const { session, exchange, exchangeGoogle } = setup(null);
+
+  await session.login(input);
+
+  expect(exchange).toHaveBeenCalledWith(input);
+  expect(exchangeGoogle).not.toHaveBeenCalled();
+  expect(session.getSnapshot().user).toEqual(user);
+});
+
+test.each([
+  [409, 'Sign in with GitHub.'],
+  [502, 'Google sign-in could not be completed.'],
+])('Google login displays HTTP %s errors without saving a token', async (status, message) => {
+  const { session, store, getMe, exchangeGoogle } = setup(null);
+  exchangeGoogle.mockRejectedValue(new ApiError(status, message));
+
+  await session.loginGoogle(input);
+
+  expect(store.set).not.toHaveBeenCalled();
+  expect(getMe).not.toHaveBeenCalled();
+  expect(session.getSnapshot()).toEqual({ user: null, loading: false, error: message });
+});
+
+test('a pending Google exchange cannot undo logout', async () => {
+  const { session, store, getMe, exchangeGoogle } = setup(null);
+  const pending = deferred<{ token: string; user: AppUser }>();
+  exchangeGoogle.mockReturnValue(pending.promise);
+
+  const login = session.loginGoogle(input);
+  await session.logout();
+
+  pending.resolve({ token: 'late-google-jwt', user });
+  await login;
+
+  expect(store.set).not.toHaveBeenCalled();
+  expect(getMe).not.toHaveBeenCalled();
+  expect(await store.get()).toBeNull();
+  expect(session.getSnapshot()).toEqual({ user: null, loading: false, error: null });
+});
+
+test('a pending Google profile lookup cannot undo logout', async () => {
+  const { session, store, getMe } = setup(null);
+  const pending = deferred<AppUser>();
+  const started = deferred<void>();
+
+  getMe.mockImplementation(() => {
+    started.resolve();
+    return pending.promise;
+  });
+
+  const login = session.loginGoogle(input);
+  await started.promise;
+  await session.logout();
+
+  pending.resolve(user);
+  await login;
+
+  expect(await store.get()).toBeNull();
+  expect(session.getSnapshot()).toEqual({ user: null, loading: false, error: null });
 });

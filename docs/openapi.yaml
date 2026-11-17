@@ -3,7 +3,7 @@ info:
   title: Build A PC API
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
-    Implemented operations include GET /, GET /actuator/health, POST /auth/github,
+    Implemented operations include GET /, GET /actuator/health, POST /auth/github, POST /auth/google,
     GET /me, GET /parts, GET /parts/{id}, GET /admin/users, GET /builds,
     POST /builds, GET /builds/{id}, PUT /builds/{id}, and DELETE /builds/{id}.
     Catalog, user, and build lists support search or pagination as documented.
@@ -98,7 +98,7 @@ components:
 
     User:
       type: object
-      description: Public account fields returned by GitHub login, GET /me, and admin user search.
+      description: Public account fields returned by GitHub/Google login, GET /me, and admin user search.
       required: [id, email, display_name, role, created_at]
       properties:
         id:
@@ -291,24 +291,23 @@ components:
                 type: string
 
     GoogleAuthRequest:
-      oneOf:
-        - type: object
-          required: [code, code_verifier, redirect_uri]
-          properties:
-            code:
-              type: string
-            code_verifier:
-              type: string
-            redirect_uri:
-              type: string
-              format: uri
-              description: The same redirect URI used in the authorization request.
-        - type: object
-          required: [idToken]
-          properties:
-            idToken:
-              type: string
-              description: Google ID token from native Google Sign-In.
+      type: object
+      required: [code, code_verifier, redirect_uri]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Nonblank authorization code returned by Google.
+        code_verifier:
+          type: string
+          minLength: 43
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._~-]{43,128}(?![\s\S])'
+        redirect_uri:
+          type: string
+          format: uri
+          minLength: 1
+          description: Must exactly match the configured Google web callback.
 
     GitHubAuthRequest:
       type: object
@@ -345,10 +344,13 @@ components:
           $ref: '#/components/schemas/User'
     AuthResponse:
       type: object
+      required: [token, user]
       properties:
         token:
           type: string
-          description: Short-lived JWT.
+          description: API-issued HS256 JWT, valid for one hour by default; never a provider token.
+        user:
+          $ref: '#/components/schemas/User'
   parameters:
     Search:
       name: q
@@ -399,7 +401,7 @@ components:
             detail: This email is already registered with Google. Sign in with Google.
             instance: /api/v1/auth/github
     ProviderUnavailable:
-      description: GitHub could not be reached or returned an unusable upstream response. Never include provider tokens or secrets.
+      description: The sign-in provider could not be reached or returned an unusable upstream response. Never include provider tokens or secrets.
       content:
         application/problem+json:
           schema:
@@ -441,7 +443,7 @@ components:
           schema:
             $ref: '#/components/schemas/ProblemDetail'
     UnsupportedMediaType:
-      description: Request content type is not supported; GitHub login requires application/json.
+      description: Request content type is not supported; login endpoints require application/json.
       content:
         application/problem+json:
           schema:
@@ -555,10 +557,10 @@ paths:
 
   /auth/google:
     post:
-      x-implementation-status: planned
+      x-implementation-status: implemented
       tags: [ Auth ]
-      summary: Planned - Authenticate with Google and receive an API JWT
-      description: Planned; no Google login handler exists yet. Web will send an authorization code with PKCE fields; native will send a Google ID token.
+      summary: Authenticate with Google and receive an API JWT
+      description: Web authorization-code exchange with PKCE. Native ID-token input remains planned.
       requestBody:
         required: true
         content:
@@ -568,6 +570,11 @@ paths:
       responses:
         '200':
           description: Successful authentication
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
           content:
             application/json:
               schema:
@@ -576,6 +583,14 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '409':
           $ref: '#/components/responses/Conflict'
+        '502':
+          $ref: '#/components/responses/ProviderUnavailable'
+        '503':
+          description: Google sign-in is not configured.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
         '500':
           $ref: '#/components/responses/InternalServerError'
 

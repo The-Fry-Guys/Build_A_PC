@@ -37,7 +37,7 @@ function directoryState(overrides: Partial<ReturnType<typeof useAdminDirectory>>
 }
 
 beforeEach(() => {
-  jest.mocked(useSession).mockReturnValue({ user: admin, loading: false, error: null, refresh, expire: jest.fn(), retry: refresh, login: jest.fn(), logout: jest.fn() });
+  jest.mocked(useSession).mockReturnValue({ user: admin, loading: false, error: null, refresh, expire: jest.fn(), retry: refresh, login: jest.fn(), loginGoogle: jest.fn(), logout: jest.fn() });
   jest.mocked(useAdminDirectory).mockReturnValue(directory);
 });
 

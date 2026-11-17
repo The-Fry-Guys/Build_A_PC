@@ -238,7 +238,7 @@ class ApiHttpIntegrationTests {
         val document = parse(generated)
         assertTrue(document.path("paths").has("/api/v1/auth/github"))
         assertTrue(document.path("paths").has("/api/v1/me"))
-        assertFalse(document.path("paths").has("/api/v1/auth/google"))
+        assertTrue(document.path("paths").has("/api/v1/auth/google"))
         val bearerScheme = document.path("components").path("securitySchemes").path("bearerAuth").path("scheme")
         assertEquals("bearer", bearerScheme.stringValue())
         val security = document.path("paths").path("/api/v1/me").path("get").path("security")

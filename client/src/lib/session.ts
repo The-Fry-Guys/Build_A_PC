@@ -1,4 +1,4 @@
-import { ApiError, type AppUser, type GitHubLoginInput, type GitHubLoginResult } from './api';
+import { ApiError, type AppUser, type AuthCodeInput, type AppLoginResult } from './api';
 import type { TokenStore } from './tokenStore.types';
 
 export interface SessionState {
@@ -21,7 +21,8 @@ export class Session {
   constructor(private readonly dependencies: {
     store: TokenStore;
     getMe: () => Promise<AppUser>;
-    exchange: (input: GitHubLoginInput) => Promise<GitHubLoginResult>;
+    exchange: (input: AuthCodeInput) => Promise<AppLoginResult>;
+    exchangeGoogle: (input: AuthCodeInput) => Promise<AppLoginResult>;
   }) {}
 
   getSnapshot = () => this.state;
@@ -101,11 +102,20 @@ export class Session {
     await this.failed(new ApiError(401, 'Your session ended. Sign in again.'), generation);
   };
 
-  login = async (input: GitHubLoginInput) => {
+  /** Signs in through the existing GitHub exchange. */
+  login = (input: AuthCodeInput) =>
+    this.finishLogin(() => this.dependencies.exchange(input));
+
+  /** Signs in through the Google exchange. */
+  loginGoogle = (input: AuthCodeInput) =>
+    this.finishLogin(() => this.dependencies.exchangeGoogle(input));
+
+  /** Applies identical token storage and session safeguards to both providers. */
+  private finishLogin = async (exchange: () => Promise<AppLoginResult>) => {
     const generation = ++this.generation;
     this.update({ user: null, loading: true, error: null });
     try {
-      const result = await this.dependencies.exchange(input);
+      const result = await exchange();
       if (generation !== this.generation) return;
       await this.write(async () => {
         if (generation === this.generation) await this.dependencies.store.set(result.token);

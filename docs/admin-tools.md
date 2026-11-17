@@ -10,7 +10,7 @@ also outside this release.
 
 ## Authentication and permissions
 
-The feature integrates the GitHub OAuth implementation through commit `ff859c7`.
+The feature uses the shared GitHub/Google app-JWT session.
 `GET /api/v1/me` supplies the current profile to `useSession()`. The API validates its own
 bearer JWT, then checks the identified user's **current database role** for admin requests.
 An old `ADMIN` claim cannot preserve access after demotion. Missing/invalid tokens return
@@ -23,7 +23,8 @@ literal case-insensitive substrings or an exact UUID. The client never downloads
 directory. Private responses use `Cache-Control: no-store`; client caches are transient,
 account-scoped, cancelled and removed when permissions or the account change.
 
-GitHub sign-in is implemented on **web and Android**. The Android provider stays mounted
+GitHub sign-in is implemented on **web and Android**; Google works on **web**. Google
+Android remains planned. The Android GitHub provider stays mounted
 above navigation so the PKCE request survives the callback. Both platforms use the same
 session interface; Android stores the API token in SecureStore. Interactive device sign-in
 and the admin smoke test still need to be checked manually. See the README for the emulator
@@ -46,7 +47,7 @@ UPDATE public.users SET role = 'USER' WHERE id = '<existing-user-uuid>'::uuid;
 
 Reload the website or foreground the app to refresh navigation after promotion. An admin
 request after demotion returns 403 even with the same unexpired token. The client's Refresh
-access button also reloads the current profile. No GitHub client secret or database password
+access button also reloads the current profile. No provider client secret or database password
 belongs in the Expo application.
 
 ## Checks for the reviewer to run
@@ -105,7 +106,7 @@ revocation with an already-issued token.
 The Appendix I auth test clicks Sign in with GitHub, checks the popup authorization
 URL, callback, state, and S256 PKCE challenge, then closes it. The request is intercepted
 before reaching GitHub; its public client ID is synthetic. Cancellation must not call
-the API exchange. See [the test decision](adr/0003-github-popup-test-boundary.md).
+the API exchange. See [the popup test](../client/e2e/auth.spec.ts).
 
 From the repository root, remove the disposable stack afterward:
 
@@ -119,11 +120,9 @@ absent in a normal application context.
 
 ### CI status
 
-The teammate's Expo workflow checks TypeScript and exports Android/web bundles.
-The existing API workflow builds/tests `api/` on Java 21; Detekt scans `api/src`.
-The local workflow changes are uncommitted. The separate admin CI draft remains
-untracked and is not enabled. Jest and Playwright currently require the commands above;
-the teammate workflows do not run them.
+API CI builds/tests on Java 21, enforces the service coverage gate, and builds the API image.
+Expo CI runs TypeScript and Jest with coverage, exports Android/web bundles, and builds
+its image. Detekt scans `api/src`. Playwright remains manual using the commands above.
 
 ### Manual web and Android checks
 

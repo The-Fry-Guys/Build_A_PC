@@ -18,7 +18,8 @@ not replace it; build persistence/compatibility work remains with that feature.
    search Parts and open a record with a missing price.
 3. Have the operator revoke that account's admin role. With the same token, the
    next user-directory request must return 403. Log out; private results disappear.
-4. Repeat the screen checks on Android. Google sign-in is still planned.
+4. On web, repeat login/logout with Google; a GitHub-registered email must return 409.
+5. Repeat the screen checks with GitHub on Android. Google Android remains planned.
 
 ## Scenario cards
 

@@ -94,10 +94,11 @@ not production or physical phones.
   - Run `curl -i 'http://localhost:8080/api/v1/parts?page=0&size=10'` for a page of database parts.
   - Run `curl -i http://localhost:8080/api/v1/parts/{id}` for one part by UUID.
 
-With the root `.env` configured, run `docker compose up --build` from `api/` to
-start the API and local Postgres. Compose supplies JWT/OAuth settings from `.env`
-and overrides database settings to use its container. For an image-only build,
-run `docker build -f api/Dockerfile .` from the repository root.
+With the root `.env` configured, run `docker compose --env-file ../.env up --build`
+from `api/` to start Expo, the API, and local Postgres. Expo receives the public GitHub and Google
+client IDs and defaults to `http://localhost:8080/api/v1`; set `EXPO_PUBLIC_API_URL`
+in the root `.env` for another reachable address. Secrets stay in the API container.
+For an image-only build, run `docker build -f api/Dockerfile .` from the repository root.
 
 API docs: [Swagger UI](http://localhost:8080/swagger-ui/index.html) displays the
 handwritten contract at `/openapi.yaml`; SpringDoc's generated implemented routes
@@ -198,6 +199,27 @@ The browser origin allowlist defaults to `http://localhost:8081` via
 `APP_CORS_ORIGINS`; native callbacks are not browser CORS origins. Production will
 need separate callback registrations/configuration and an explicit HTTPS origin.
 No refresh tokens or account linking are part of this increment.
+
+## Google OAuth — web
+
+Google web login is implemented; Android Google Sign-In remains planned.
+`POST /api/v1/auth/google` accepts `{ code, code_verifier, redirect_uri }` and
+returns `{ token, user }`. Both providers share app JWTs, `/me`, storage, and logout.
+
+1. Use a Google **Web application** OAuth client with origin `http://localhost:8081`
+   and callback `http://localhost:8081/auth`. Request only `openid email profile`.
+2. In the root `.env`, set `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_WEB_CLIENT_SECRET`, and
+   `GOOGLE_WEB_REDIRECT_URI=http://localhost:8081/auth`.
+3. Copy only the ID to `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `client/.env`.
+   Compose supplies this public ID from the root settings.
+4. Start the API with `bash load_env.sh` from `api/`, then run
+   `npm run web -- --port 8081` from `client/`. Check login, refresh, logout,
+   sign-in again, and cancellation/retry. An email already registered through GitHub
+   returns 409; accounts are not automatically linked.
+
+Tests: from `api/`, run `./gradlew test --tests 'com.example.demo.Google*'`;
+from `client/`, run `npm test -- --runInBand`. Automated tests use synthetic
+provider responses and tokens; real browser login was checked locally.
 
 ## Database schema reference
 

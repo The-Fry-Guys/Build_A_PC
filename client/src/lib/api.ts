@@ -9,18 +9,22 @@ export interface AppUser {
   created_at: string;
 }
 
-/** Code-exchange values obtained from Expo AuthSession. */
-export interface GitHubLoginInput {
+/** Authorization-code values collected by the client. */
+export interface AuthCodeInput {
   code: string;
   codeVerifier: string;
   redirectUri: string;
 }
 
-/** Our app token and account profile, never GitHub's access token. */
-export interface GitHubLoginResult {
+/** Our app JWT and public account profile, shared by both providers. */
+export interface AppLoginResult {
   token: string;
   user: AppUser;
 }
+
+// Preserve existing GitHub imports.
+export type GitHubLoginInput = AuthCodeInput;
+export type GitHubLoginResult = AppLoginResult;
 
 /** An API failure with its HTTP status available to the UI. */
 export class ApiError extends Error {
@@ -123,6 +127,25 @@ export function exchangeGitHubCode(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
+    },
+    false,
+  );
+}
+
+/** Exchanges a Google code without attaching an existing app JWT. */
+export function exchangeGoogleCode(
+  input: AuthCodeInput,
+): Promise<AppLoginResult> {
+  return request<AppLoginResult>(
+    '/auth/google',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: input.code,
+        code_verifier: input.codeVerifier,
+        redirect_uri: input.redirectUri,
+      }),
     },
     false,
   );

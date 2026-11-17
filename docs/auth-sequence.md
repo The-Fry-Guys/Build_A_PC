@@ -1,7 +1,9 @@
-# GitHub OAuth sequence
+# OAuth sequences
 
-Implemented for Expo web and Android. Spring Boot exchanges the code and issues
-the app JWT; Supabase hosts PostgreSQL only, not authentication endpoints.
+GitHub works on Expo web and Android; Google works on web. Spring Boot issues
+the app JWT; Supabase hosts PostgreSQL only. Google Android remains planned.
+
+## GitHub — web and Android
 
 ```mermaid
 sequenceDiagram
@@ -52,4 +54,37 @@ sequenceDiagram
 - Logout removes local token/profile state. It does not revoke GitHub authorization
   or an already issued JWT. Refresh tokens and account linking are not implemented.
 
-Google remains planned and is not represented as an implemented flow here.
+## Google — web
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as Expo web
+    participant Google
+    participant API as Spring Boot API
+    participant DB as PostgreSQL
+
+    User->>Web: Click Sign in with Google
+    Web->>Web: Prepare state and S256 PKCE challenge
+    Web->>Google: Open popup with openid email profile and /auth callback
+    Google-->>Web: Redirect popup to /auth with code and state
+    Web->>Web: Complete popup; validate state
+    Web->>API: POST /api/v1/auth/google {code, code_verifier, redirect_uri}
+    API->>API: Validate input and exact configured callback
+    API->>Google: Exchange code with verifier and server-held web credentials
+    Google-->>API: ID token
+    API->>Google: Retrieve signing keys when needed
+    API->>API: Verify signature, issuer, audience, expiry and verified email
+    API->>DB: Find identity or create USER account and GOOGLE identity
+    Note over API,DB: Existing email under another provider returns 409; no linking
+    DB-->>API: Persisted application user
+    API-->>Web: 200 {token, user}, Cache-Control: no-store
+    Web->>Web: Store app JWT in sessionStorage
+    Web->>API: GET /api/v1/me with Bearer app JWT
+    API-->>Web: Current application profile
+```
+
+Google's `sub` identifies the provider account. Missing configuration returns 503;
+rejected codes, invalid tokens, and unverified emails return 400; upstream failures
+return 502. Restoration and logout use the shared session behavior above.

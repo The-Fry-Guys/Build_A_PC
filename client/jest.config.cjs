@@ -15,6 +15,7 @@ module.exports = {
     'src/lib/tokenStore.ts',
     'src/lib/session.ts',
     'src/lib/github-flow.ts',
+    'src/lib/google-flow.ts',
     'src/admin/use-admin-directory.ts',
     'src/admin/query-provider.tsx',
     'src/hooks/useBuild.ts',
