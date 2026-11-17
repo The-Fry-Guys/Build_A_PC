@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
 import { tokenStore } from '@/lib/tokenStore';
 import { getMe, updateProfile, deleteAccount, AppUser, ApiError } from '@/lib/api';
@@ -12,13 +12,7 @@ export default function UserProfile() {
     const [message, setMessage] = useState('');
     const [errorMsg, setErrorMsg] = useState('');
 
-    useEffect(() => {
-        loadUser();
-    }, []);
-
-    const loadUser = async () => {
-        setIsLoading(true);
-        setErrorMsg('');
+    const loadUser = useCallback(async () => {
         try {
             const token = await tokenStore.get();
             if (!token) {
@@ -34,7 +28,12 @@ export default function UserProfile() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(() => { void loadUser(); }, 0);
+        return () => clearTimeout(timer);
+    }, [loadUser]);
 
     const handleSave = async () => {
         if (!user) return;

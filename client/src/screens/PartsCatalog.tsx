@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { getCatalogParts, type CatalogPart } from '@/lib/api';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { getCatalogParts, getCatalogPriceRange, type CatalogPart } from '@/lib/api';
 import { useBuild } from '@/hooks/useBuild';
 import type { Part } from '@/types/build';
+import PriceRangeSlider from '@/components/PriceRangeSlider';
 
 const PAGE_SIZE = 20;
 const CATEGORIES = [
@@ -18,11 +19,19 @@ export default function PartsCatalog() {
     const [searchInput, setSearchInput] = useState('');
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('All');
+    const [priceRange, setPriceRange] = useState<{ min: number; max: number } | null>(null);
     const [addedPartId, setAddedPartId] = useState<string | null>(null);
     const initialPrefetchKey = useRef<string | null>(null);
     const { addPart } = useBuild();
     const selectedCategory = category === 'All' ? undefined : category;
-    const filterKey = `${search}\u0000${selectedCategory ?? ''}`;
+    const priceBounds = useQuery({
+        queryKey: ['catalog-price-range'],
+        queryFn: getCatalogPriceRange,
+        staleTime: 5 * 60_000,
+    });
+    const domainMin = priceBounds.data?.min_price ?? 0;
+    const domainMax = priceBounds.data?.max_price ?? domainMin;
+    const filterKey = `${search}\u0000${selectedCategory ?? ''}\u0000${priceRange?.min ?? ''}\u0000${priceRange?.max ?? ''}`;
 
     useEffect(() => {
         const timeout = setTimeout(() => setSearch(searchInput.trim()), 250);
@@ -30,10 +39,12 @@ export default function PartsCatalog() {
     }, [searchInput]);
 
     const catalog = useInfiniteQuery({
-        queryKey: ['catalog-parts', search, selectedCategory],
+        queryKey: ['catalog-parts', search, selectedCategory, priceRange?.min, priceRange?.max],
         queryFn: ({ pageParam, signal }) => getCatalogParts({
             q: search,
             category: selectedCategory,
+            minPrice: priceRange?.min,
+            maxPrice: priceRange?.max,
             page: pageParam,
             size: PAGE_SIZE,
             signal,
@@ -43,19 +54,25 @@ export default function PartsCatalog() {
         staleTime: 60_000,
         gcTime: 5 * 60_000,
     });
+    const {
+        data: catalogData,
+        hasNextPage: catalogHasNextPage,
+        isFetchingNextPage: catalogIsFetchingNextPage,
+        fetchNextPage: fetchNextCatalogPage,
+    } = catalog;
 
-    const parts = useMemo(() => catalog.data?.pages.flatMap((page) => page.content) ?? [], [catalog.data]);
+    const parts = useMemo(() => catalogData?.pages.flatMap((page) => page.content) ?? [], [catalogData]);
 
     useEffect(() => {
         initialPrefetchKey.current = null;
     }, [filterKey]);
 
     useEffect(() => {
-        if (!catalog.data || catalog.data.pages.length !== 1 || !catalog.hasNextPage
-            || catalog.isFetchingNextPage || initialPrefetchKey.current === filterKey) return;
+        if (!catalogData || catalogData.pages.length !== 1 || !catalogHasNextPage
+            || catalogIsFetchingNextPage || initialPrefetchKey.current === filterKey) return;
         initialPrefetchKey.current = filterKey;
-        void catalog.fetchNextPage();
-    }, [catalog.data, catalog.fetchNextPage, catalog.hasNextPage, catalog.isFetchingNextPage, filterKey]);
+        void fetchNextCatalogPage();
+    }, [catalogData, catalogHasNextPage, catalogIsFetchingNextPage, fetchNextCatalogPage, filterKey]);
 
     /** Adds the selected catalog entry to the shared active build. */
     const addToBuild = (catalogPart: CatalogPart) => {
@@ -79,11 +96,16 @@ export default function PartsCatalog() {
 
     /** Fetches and caches the next catalog page as the user approaches the list end. */
     const loadNextPage = useCallback(() => {
-        if (catalog.hasNextPage && !catalog.isFetchingNextPage) void catalog.fetchNextPage();
-    }, [catalog.fetchNextPage, catalog.hasNextPage, catalog.isFetchingNextPage]);
+        if (catalogHasNextPage && !catalogIsFetchingNextPage) void fetchNextCatalogPage();
+    }, [catalogHasNextPage, catalogIsFetchingNextPage, fetchNextCatalogPage]);
 
-    const totalElements = catalog.data?.pages[0]?.totalElements ?? 0;
-    const hasFilters = search.length > 0 || category !== 'All';
+    const totalElements = catalogData?.pages[0]?.totalElements ?? 0;
+    const hasFilters = search.length > 0 || category !== 'All' || priceRange !== null;
+
+    /** Applies slider bounds and omits the price filter when the full catalog range is selected. */
+    const applyPriceRange = (range: { min: number; max: number }) => {
+        setPriceRange(range.min <= domainMin && range.max >= domainMax ? null : range);
+    };
 
     return (
         <View style={styles.container}>
@@ -111,52 +133,82 @@ export default function PartsCatalog() {
                 ))}
             </ScrollView>
 
-            {catalog.isLoading ? (
-                <View style={styles.centered}><ActivityIndicator size="large" color="#1976d2" /><Text style={styles.statusText}>Loading catalog...</Text></View>
-            ) : catalog.isError && !catalog.data ? (
-                <View style={styles.centered}><Text style={styles.errorText}>Could not load parts catalog. Check your connection and try again.</Text><TouchableOpacity style={styles.retryButton} onPress={() => { void catalog.refetch(); }}><Text style={styles.addButtonText}>Retry</Text></TouchableOpacity></View>
-            ) : (
-                <FlatList
-                    style={styles.partsList}
-                    data={parts}
-                    keyExtractor={(item) => item.part_id}
-                    renderItem={renderPartCard}
-                    contentContainerStyle={styles.list}
-                    onEndReached={loadNextPage}
-                    onEndReachedThreshold={0.5}
-                    ListFooterComponent={catalog.isFetchingNextPage ? (
-                        <View style={styles.footer}><ActivityIndicator color="#1976d2" /><Text style={styles.statusText}>Loading more parts...</Text></View>
-                    ) : catalog.isFetchNextPageError ? (
-                        <TouchableOpacity accessibilityRole="button" style={styles.retryButton} onPress={loadNextPage}><Text style={styles.addButtonText}>Retry loading more parts</Text></TouchableOpacity>
-                    ) : undefined}
-                    ListEmptyComponent={(
-                        <View style={styles.emptyState}>
-                            <Text style={styles.statusText}>
-                                {totalElements === 0 && !hasFilters ? 'No parts are available in the catalog yet.' : 'No parts match those filters.'}
-                            </Text>
-                            {hasFilters ? (
-                                <TouchableOpacity
-                                    accessibilityRole="button"
-                                    style={styles.clearFiltersButton}
-                                    onPress={() => { setSearchInput(''); setSearch(''); setCategory('All'); }}
-                                >
-                                    <Text style={styles.clearFiltersText}>Clear filters</Text>
-                                </TouchableOpacity>
-                            ) : null}
-                        </View>
+            <View style={styles.catalogBody}>
+                <View style={styles.priceRail}>
+                    {priceBounds.data && priceBounds.data.min_price !== null && priceBounds.data.max_price !== null ? (
+                        <PriceRangeSlider
+                            key={`${domainMin}:${domainMax}:${priceRange?.min ?? ''}:${priceRange?.max ?? ''}`}
+                            domainMin={domainMin}
+                            domainMax={domainMax}
+                            selectedMin={priceRange?.min ?? null}
+                            selectedMax={priceRange?.max ?? null}
+                            onApply={applyPriceRange}
+                        />
+                    ) : priceBounds.isError ? (
+                        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Retry loading price range" onPress={() => { void priceBounds.refetch(); }} style={styles.priceError}>
+                            <Text style={styles.priceErrorText}>$ ↻</Text>
+                        </TouchableOpacity>
+                    ) : priceBounds.isLoading ? (
+                        <ActivityIndicator accessibilityLabel="Loading price range" color="#1976d2" />
+                    ) : (
+                        <Text style={styles.noPrices}>$</Text>
                     )}
-                />
-            )}
+                </View>
+                <View style={styles.listRegion}>
+                    {catalog.isLoading ? (
+                        <View style={styles.centered}><ActivityIndicator size="large" color="#1976d2" /><Text style={styles.statusText}>Loading catalog...</Text></View>
+                    ) : catalog.isError && !catalog.data ? (
+                        <View style={styles.centered}><Text style={styles.errorText}>Could not load parts catalog. Check your connection and try again.</Text><TouchableOpacity style={styles.retryButton} onPress={() => { void catalog.refetch(); }}><Text style={styles.addButtonText}>Retry</Text></TouchableOpacity></View>
+                    ) : (
+                        <FlatList
+                            style={styles.partsList}
+                            data={parts}
+                            keyExtractor={(item) => item.part_id}
+                            renderItem={renderPartCard}
+                            contentContainerStyle={styles.list}
+                            onEndReached={loadNextPage}
+                            onEndReachedThreshold={0.5}
+                            ListFooterComponent={catalog.isFetchingNextPage ? (
+                                <View style={styles.footer}><ActivityIndicator color="#1976d2" /><Text style={styles.statusText}>Loading more parts...</Text></View>
+                            ) : catalog.isFetchNextPageError ? (
+                                <TouchableOpacity accessibilityRole="button" style={styles.retryButton} onPress={loadNextPage}><Text style={styles.addButtonText}>Retry loading more parts</Text></TouchableOpacity>
+                            ) : undefined}
+                            ListEmptyComponent={(
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.statusText}>
+                                        {totalElements === 0 && !hasFilters ? 'No parts are available in the catalog yet.' : 'No parts match those filters.'}
+                                    </Text>
+                                    {hasFilters ? (
+                                        <TouchableOpacity
+                                            accessibilityRole="button"
+                                            style={styles.clearFiltersButton}
+                                            onPress={() => { setSearchInput(''); setSearch(''); setCategory('All'); setPriceRange(null); }}
+                                        >
+                                            <Text style={styles.clearFiltersText}>Clear filters</Text>
+                                        </TouchableOpacity>
+                                    ) : null}
+                                </View>
+                            )}
+                        />
+                    )}
+                </View>
+            </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, minHeight: 0, width: '100%', backgroundColor: '#f5f5f5', padding: 16 },
+    container: { flex: 1, minHeight: 0, width: '100%', backgroundColor: '#f5f5f5', padding: 16, overflow: 'hidden' },
+    listRegion: { flex: 1, minHeight: 0, overflow: 'hidden' },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
     footer: { alignItems: 'center', paddingVertical: 16 },
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 12, color: '#171717' },
     search: { borderWidth: 1, borderColor: '#c7c7c7', borderRadius: 8, backgroundColor: '#fff', color: '#171717', paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 },
+    catalogBody: { flex: 1, minHeight: 0, flexDirection: 'row', alignItems: 'stretch', gap: 12, overflow: 'hidden' },
+    priceRail: { width: 116, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
+    priceError: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#d5dbe3' },
+    priceErrorText: { color: '#b42318', fontSize: 18 },
+    noPrices: { color: '#667085', fontSize: 18 },
     filterRail: { flexGrow: 0, flexShrink: 0, height: 44, marginBottom: 12 },
     filters: { gap: 8, alignItems: 'center' },
     filter: { alignSelf: 'center', justifyContent: 'center', minHeight: 36, flexShrink: 0, borderWidth: 1, borderColor: '#b7c0cc', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: '#fff' },

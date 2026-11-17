@@ -142,6 +142,12 @@ export interface CatalogPart {
   created_at: string;
 }
 
+/** Global non-null price bounds for the catalog slider. */
+export interface CatalogPriceRange {
+  min_price: number | null;
+  max_price: number | null;
+}
+
 /** A bounded database page using the OpenAPI pagination contract. */
 export interface DirectoryPage<T> {
   content: T[];
@@ -157,8 +163,41 @@ export interface SavedBuild {
   user_id: string;
   name: string;
   budget: number | null;
-  total_price: number;
+  total_price: number | null;
   created_at: string;
+}
+
+/** Normalizes saved-build summaries returned with either snake_case or camelCase fields. */
+function normalizeSavedBuild(value: unknown): SavedBuild {
+  if (typeof value !== 'object' || value === null) {
+    throw new ApiError(502, 'The API returned an invalid saved build.');
+  }
+
+  const fields = value as Record<string, unknown>;
+  const buildId = fields.build_id ?? fields.buildId;
+  const userId = fields.user_id ?? fields.userId;
+  const createdAt = fields.created_at ?? fields.createdAt;
+  const totalPrice = fields.total_price ?? fields.totalPrice;
+  const budget = fields.budget;
+  const numberOrNull = (field: unknown): number | null => {
+    if (field === null || field === undefined) return null;
+    const parsed = typeof field === 'number' ? field : Number(field);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  if (typeof buildId !== 'string' || typeof userId !== 'string'
+    || typeof fields.name !== 'string' || typeof createdAt !== 'string') {
+    throw new ApiError(502, 'The API returned an incomplete saved build.');
+  }
+
+  return {
+    build_id: buildId,
+    user_id: userId,
+    name: fields.name,
+    budget: numberOrNull(budget),
+    total_price: numberOrNull(totalPrice),
+    created_at: createdAt,
+  };
 }
 
 /** A saved build detail, including its current selected parts. */
@@ -188,6 +227,8 @@ export interface DirectoryRequest {
 /** Optional category filter accepted by the public catalog route. */
 export interface CatalogRequest extends DirectoryRequest {
   category?: string;
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 /** Encodes search terms so literal punctuation cannot become URL parameters. */
@@ -208,12 +249,20 @@ export function getCatalogParts(input: CatalogRequest): Promise<DirectoryPage<Ca
     size: String(input.size ?? 10),
   });
   if (input.category) params.set('category', input.category);
+  if (input.minPrice !== undefined) params.set('minPrice', String(input.minPrice));
+  if (input.maxPrice !== undefined) params.set('maxPrice', String(input.maxPrice));
   return request(`/parts?${params.toString()}`, { method: 'GET', signal: input.signal }, false);
+}
+
+/** Loads the catalog-wide minimum and maximum listed prices. */
+export function getCatalogPriceRange(): Promise<CatalogPriceRange> {
+  return request('/parts/price-range', { method: 'GET' }, false);
 }
 
 /** Loads the current user's paginated builds, optionally filtered by name. */
 export function getSavedBuilds(input: DirectoryRequest): Promise<DirectoryPage<SavedBuild>> {
-  return request(directoryPath('/builds', input), { method: 'GET', signal: input.signal }, true);
+  return request<DirectoryPage<unknown>>(directoryPath('/builds', input), { method: 'GET', signal: input.signal }, true)
+    .then((page) => ({ ...page, content: page.content.map(normalizeSavedBuild) }));
 }
 
 /** Loads a saved build's selected parts before opening it for editing. */

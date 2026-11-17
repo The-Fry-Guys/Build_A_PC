@@ -37,7 +37,7 @@ export function useBuildState(): BuildState {
     loadBuild: (id: string, name: string, nextBudget: number | null, parts: Part[]) => {
       setBuildId(id);
       setBuildName(name);
-      setBudget(nextBudget);
+      setBudget(nextBudget ?? null);
       setSelectedParts(parts);
     },
     addPart: (part: Part) => setSelectedParts((previous) => [

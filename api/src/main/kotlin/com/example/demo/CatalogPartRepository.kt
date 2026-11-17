@@ -8,10 +8,19 @@ import org.springframework.data.repository.query.Param
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import jakarta.persistence.LockModeType
+import java.math.BigDecimal
 import java.util.UUID
 
 /** Provides catalog persistence, UUID lookup, and database pagination through JPA. */
 interface CatalogPartRepository : JpaRepository<CatalogPart, UUID>, JpaSpecificationExecutor<CatalogPart> {
+    /** Returns the smallest listed catalog price, ignoring parts without a price. */
+    @Query("select min(part.price) from CatalogPart part")
+    fun findMinimumPrice(): BigDecimal?
+
+    /** Returns the largest listed catalog price, ignoring parts without a price. */
+    @Query("select max(part.price) from CatalogPart part")
+    fun findMaximumPrice(): BigDecimal?
+
     /** Returns catalog parts in a requested category using bounded pagination. */
     fun findByCategory(category: String, pageable: Pageable): Page<CatalogPart>
 

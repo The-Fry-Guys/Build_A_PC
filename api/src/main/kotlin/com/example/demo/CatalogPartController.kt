@@ -16,8 +16,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.jpa.domain.Specification
+import jakarta.persistence.criteria.Predicate
 import java.math.BigDecimal
 import java.util.UUID
 import java.time.Instant
@@ -36,19 +36,30 @@ class CatalogPartController(
         @RequestParam(defaultValue = "10") size: Int,
         @RequestParam(required = false) q: String? = null,
         @RequestParam(required = false) category: String? = null,
+        @RequestParam(required = false) minPrice: BigDecimal? = null,
+        @RequestParam(required = false) maxPrice: BigDecimal? = null,
     ): CatalogPartPage {
         // Validate the requested page before using either catalog query.
         val pageable = directoryPage(page, size)
+        validatePriceRange(minPrice, maxPrice)
         val search = q?.takeIf { it.isNotBlank() }
             ?.let { directorySearch<CatalogPart>(it, "name", "category") }
         val selectedCategory = category?.takeIf { it.isNotBlank() }
         val categoryFilter = selectedCategory?.let { selected ->
             Specification<CatalogPart> { root, _, builder -> builder.equal(root.get<String>("category"), selected) }
         }
+        val priceFilter = if (minPrice == null && maxPrice == null) null else Specification<CatalogPart> { root, _, builder ->
+            val price = root.get<BigDecimal>("price")
+            val predicates = mutableListOf<Predicate>(builder.isNotNull(price))
+            minPrice?.let { predicates.add(builder.greaterThanOrEqualTo(price, it)) }
+            maxPrice?.let { predicates.add(builder.lessThanOrEqualTo(price, it)) }
+            builder.and(*predicates.toTypedArray())
+        }
+        val filters = listOfNotNull(search, categoryFilter, priceFilter)
         val parts = when {
-            search == null && selectedCategory == null -> repository.findMostUsed(PageRequest.of(page, size))
-            search == null -> repository.findByCategory(selectedCategory!!, pageable)
-            else -> repository.findAll(listOfNotNull(search, categoryFilter).reduce { current, next -> current.and(next) }, pageable)
+            search == null && selectedCategory == null && priceFilter == null -> repository.findMostUsed(pageable)
+            search == null && selectedCategory != null && priceFilter == null -> repository.findByCategory(selectedCategory, pageable)
+            else -> repository.findAll(filters.reduce { current, next -> current.and(next) }, pageable)
         }
 
         return CatalogPartPage(
@@ -59,6 +70,13 @@ class CatalogPartController(
             totalPages = parts.totalPages,
         )
     }
+
+    /** Returns the global listed-price bounds used to scale the catalog range slider. */
+    @GetMapping("/price-range")
+    fun getPriceRange(): CatalogPriceRange = CatalogPriceRange(
+        minPrice = repository.findMinimumPrice(),
+        maxPrice = repository.findMaximumPrice(),
+    )
 
     /** Returns the requested catalog part or reports a missing resource. */
     @GetMapping("/{id}")
@@ -157,6 +175,14 @@ class CatalogPartController(
         return CatalogPart(category = normalizedCategory, name = normalizedName, price = price)
     }
 
+    /** Rejects negative, over-precision, over-maximum, or inverted catalog price bounds. */
+    private fun validatePriceRange(minPrice: BigDecimal?, maxPrice: BigDecimal?) {
+        val invalid = listOfNotNull(minPrice, maxPrice).any {
+            it.signum() < 0 || it.scale().coerceAtLeast(0) > 2 || it > MAX_PRICE
+        } || minPrice != null && maxPrice != null && minPrice > maxPrice
+        if (invalid) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Price range is invalid.")
+    }
+
     private companion object {
         val CATEGORIES = setOf(
             "case-accessory", "case-fan", "case", "cpu-cooler", "cpu", "external-hard-drive",
@@ -178,6 +204,12 @@ data class CatalogPartPage(
     val size: Int,
     val totalElements: Long,
     val totalPages: Int,
+)
+
+/** Carries the lowest and highest non-null prices in the public catalog. */
+data class CatalogPriceRange(
+    @get:JsonProperty("min_price") val minPrice: BigDecimal?,
+    @get:JsonProperty("max_price") val maxPrice: BigDecimal?,
 )
 
 /** Represents a catalog part using the field names defined by OpenAPI. */

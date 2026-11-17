@@ -69,8 +69,8 @@ export default function SavedBuilds() {
                 : <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
                     {pageData?.content.map((build) => <View key={build.build_id} style={styles.card}>
                         <Text style={styles.buildName}>{build.name}</Text>
-                        <Text style={styles.detail}>Budget: {build.budget === null ? 'Not set' : `$${build.budget.toFixed(2)}`}</Text>
-                        <Text style={styles.detail}>Price: ${build.total_price.toFixed(2)}</Text>
+                        <Text style={styles.detail}>Budget: {build.budget == null ? 'Not set' : `$${build.budget.toFixed(2)}`}</Text>
+                        <Text style={styles.detail}>Price: {build.total_price === null ? 'Unavailable' : `$${build.total_price.toFixed(2)}`}</Text>
                         <Text style={styles.detail}>Compatibility score: <Text style={styles.notImplemented}>not implemented yet</Text></Text>
                         <TouchableOpacity accessibilityRole="button" disabled={editingId !== null} style={styles.button} onPress={() => { void editBuild(build.build_id); }}>
                             <Text style={styles.buttonText}>{editingId === build.build_id ? 'Loading…' : 'Edit Build'}</Text>

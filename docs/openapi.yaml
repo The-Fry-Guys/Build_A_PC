@@ -4,7 +4,7 @@ info:
   description: >-
     API for managing PC builds, part compatibility, and user accounts across web and Android.
     Implemented operations include GET /, GET /actuator/health, POST /auth/github,
-    GET /me, GET /parts, GET /parts/{id}, POST /parts, PUT and DELETE
+    GET /me, GET /parts, GET /parts/price-range, GET /parts/{id}, POST /parts, PUT and DELETE
     /parts/{id}, GET /admin/users, PUT and DELETE /admin/users/{id},
     GET /builds, POST /builds, GET /builds/{id}, PUT /builds/{id}, and DELETE /builds/{id}.
     Catalog, user, and build lists support search or pagination as documented.
@@ -74,6 +74,21 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/Part'
+
+    CatalogPriceRange:
+      type: object
+      required: [min_price, max_price]
+      properties:
+        min_price:
+          type: number
+          format: double
+          nullable: true
+          description: Lowest non-null part price, or null when no prices are listed.
+        max_price:
+          type: number
+          format: double
+          nullable: true
+          description: Highest non-null part price, or null when no prices are listed.
 
     BuildPage:
       allOf:
@@ -725,12 +740,31 @@ paths:
     get:
       x-implementation-status: implemented
       tags: [ Parts ]
-      summary: Get list of general PC parts
-      description: Public database search over part name/category, ordered by ID for consistent pagination.
+      summary: Search and filter PC parts
+      description: Public database search with optional category and inclusive price bounds. Unfiltered results prioritize popular parts.
       parameters:
         - $ref: '#/components/parameters/Search'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          required: false
+          description: Inclusive minimum listed price; excludes parts without a price when used.
+          schema:
+            type: number
+            minimum: 0
+        - name: maxPrice
+          in: query
+          required: false
+          description: Inclusive maximum listed price; excludes parts without a price when used.
+          schema:
+            type: number
+            minimum: 0
       responses:
         '200':
           description: A page of parts
@@ -774,6 +808,24 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /parts/price-range:
+    get:
+      x-implementation-status: implemented
+      tags: [ Parts ]
+      summary: Get catalog-wide listed price bounds
+      description: Returns the minimum and maximum non-null catalog prices for scaling price filters; both values are null if no part has a listed price.
+      responses:
+        '200':
+          description: Catalog price bounds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CatalogPriceRange'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
         '500':
           $ref: '#/components/responses/InternalServerError'
 

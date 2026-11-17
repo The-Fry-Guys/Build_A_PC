@@ -11,8 +11,8 @@ import { ThemedView } from './themed-view';
 /** Renders the shared floating route bar on Android and other native platforms. */
 export default function AppTabs() {
   const { user } = useSession();
-  return <Tabs>
-    <TabSlot style={{ height: '100%', paddingBottom: 88 }} />
+  return <Tabs style={{ flex: 1, minHeight: 0, height: '100%', position: 'relative', overflow: 'hidden' }}>
+    <TabSlot style={{ flex: 1, minHeight: 0, paddingBottom: 88, overflow: 'hidden' }} />
     <TabList asChild>
       <FloatingTabList>
         <TabTrigger name="index" href="/" asChild><TabButton hidden>Sign in</TabButton></TabTrigger>

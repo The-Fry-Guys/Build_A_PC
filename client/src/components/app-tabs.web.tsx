@@ -19,8 +19,8 @@ import { ThemedView } from './themed-view';
 export default function AppTabs() {
   const { user } = useSession();
   return (
-    <Tabs>
-      <TabSlot style={{ height: '100%', paddingBottom: 88 }} />
+    <Tabs style={{ flex: 1, minHeight: 0, height: '100vh', position: 'relative', overflow: 'hidden' }}>
+      <TabSlot style={{ flex: 1, minHeight: 0, paddingBottom: 88, overflow: 'hidden' }} />
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="index" href="/" asChild>
