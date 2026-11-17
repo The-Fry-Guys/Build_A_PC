@@ -27,7 +27,7 @@ ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
 # Plain jar is disabled by Spring Boot's Gradle plugin only for bootJar; pick the boot jar
 COPY --from=build /app/api/build/libs/*-SNAPSHOT.jar app.jar
 
-EXPOSE 8080
+EXPOSE 10000
 
 # Report unhealthy when the API or its database health check is unavailable.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \

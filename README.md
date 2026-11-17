@@ -5,7 +5,8 @@ Project 3 for CST438 Software Engineering
 
 [Architecture](docs/architecture.md) · [Decisions](docs/adr/) ·
 [Security](docs/security.md) · [Runbook](docs/runbook.md) ·
-[Demo](docs/demo.md) · [Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
+[Demo](docs/demo.md) · [Visitor onboarding](docs/onboarding.md) ·
+[Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
 
 ## Start the project with Docker Compose
 

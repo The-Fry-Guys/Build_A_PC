@@ -47,10 +47,10 @@ export function useAdminDirectory(kind: DirectoryKind, enabled: boolean) {
     else await refresh();
   };
   const userUpdate = useMutation({ mutationFn: ({ id, input }: { id: string; input: UpdateAdminUserInput }) => updateAdminUser(id, input), onSuccess: afterMutation, onError: mutationError });
-  const userDelete = useMutation({ mutationFn: deleteAdminUser, onSuccess: afterMutation, onError: mutationError });
-  const partCreate = useMutation({ mutationFn: createAdminPart, onSuccess: afterMutation, onError: mutationError });
+  const userDelete = useMutation({ mutationFn: (id: string) => deleteAdminUser(id), onSuccess: afterMutation, onError: mutationError });
+  const partCreate = useMutation({ mutationFn: (input: AdminPartInput) => createAdminPart(input), onSuccess: afterMutation, onError: mutationError });
   const partUpdate = useMutation({ mutationFn: ({ id, input }: { id: string; input: AdminPartInput }) => updateAdminPart(id, input), onSuccess: afterMutation, onError: mutationError });
-  const partDelete = useMutation({ mutationFn: deleteAdminPart, onSuccess: afterMutation, onError: mutationError });
+  const partDelete = useMutation({ mutationFn: (id: string) => deleteAdminPart(id), onSuccess: afterMutation, onError: mutationError });
 
   useEffect(() => {
     if (!(query.error instanceof ApiError) || ![401, 403].includes(query.error.status) || !accountId) return;

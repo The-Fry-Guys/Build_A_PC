@@ -42,7 +42,7 @@ export function useBuildState(): BuildState {
     },
     addPart: (part: Part) => setSelectedParts((previous) => [
       ...previous.filter((existing) => existing.category !== part.category),
-      { ...part, quantity: 1 },
+      part,
     ]),
     removePart: (partId: string) => setSelectedParts((previous) => previous.filter((part) => part.part_id !== partId)),
     clearBuild: () => { setBuildId(null); setBudget(null); setSelectedParts([]); setBuildName('My Custom PC'); },
