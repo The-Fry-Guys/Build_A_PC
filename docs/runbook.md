@@ -11,6 +11,7 @@ URLs, release automation, and deployment access still need team confirmation.
    - If you're on MacOS or Linux or WSL you can use `curl -i https://build-a-pc-w99e.onrender.com/actuator/health`
      to check if the API is successfully running.
    - Once it is, refresh the app or the website.
+   - You can also click on `https://build-a-pc-w99e.onrender.com/` to see if Render API is actually up, **this is the most common issue so if something is not working check on this**
 2. If you have the `.env` files loaded into your project and want to host the API locally do:
    `EXPO_PUBLIC_API_URL=http://localhost:8080/api/v1 docker compose --profile local up --build`
 3. After choosing which type of API hosing you'd like to access and running one of the commands

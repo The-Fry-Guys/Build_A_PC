@@ -8,7 +8,7 @@ Project 3 for CST438 Software Engineering
 [Demo](docs/demo.md) · [Visitor onboarding](docs/onboarding.md) ·
 [Admin tools](docs/admin-tools.md) · [API contract](docs/openapi.yaml)
 
-## Start the project with Docker Compose
+## Start the project with Docker Compose **(ONLY IMPORTANT PART FOR DEMO BUILD)**
 
 You need Git and Docker Engine or Docker Desktop with Docker Compose v2. Run the
 commands below from the repository root (`Build_A_PC/`), not from `api/`.
