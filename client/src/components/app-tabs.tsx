@@ -15,11 +15,11 @@ export default function AppTabs() {
     <TabSlot style={{ flex: 1, minHeight: 0, paddingBottom: 88, overflow: 'hidden' }} />
     <TabList asChild>
       <FloatingTabList>
-        <TabTrigger name="index" href="/" asChild><TabButton hidden>Sign in</TabButton></TabTrigger>
+        <TabTrigger name="index" href="/" asChild><TabButton hidden={!!user}>Sign in</TabButton></TabTrigger>
         <TabTrigger name="parts" href={'/parts' as Href} asChild><TabButton>Parts</TabButton></TabTrigger>
-        <TabTrigger name="alex-pc" href={'/alex-pc' as Href} asChild><TabButton>My Build</TabButton></TabTrigger>
-        <TabTrigger name="builds" href={'/builds' as Href} asChild><TabButton>Builds</TabButton></TabTrigger>
-        <TabTrigger name="profile" href={'/profile' as Href} asChild><TabButton>Profile</TabButton></TabTrigger>
+        <TabTrigger name="alex-pc" href={'/alex-pc' as Href} asChild><TabButton hidden={!user}>My Build</TabButton></TabTrigger>
+        <TabTrigger name="builds" href={'/builds' as Href} asChild><TabButton hidden={!user}>Builds</TabButton></TabTrigger>
+        <TabTrigger name="profile" href={'/profile' as Href} asChild><TabButton hidden={!user}>Profile</TabButton></TabTrigger>
         <TabTrigger name="admin" href="/admin" asChild><TabButton hidden={user?.role !== 'ADMIN'}>Admin</TabButton></TabTrigger>
       </FloatingTabList>
     </TabList>

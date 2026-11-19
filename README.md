@@ -41,6 +41,11 @@ host.
    check is [here](https://build-a-pc-w99e.onrender.com/actuator/health). Press
    `Ctrl+C` to stop; `docker compose down` removes the frontend container.
 
+Choose **Browse parts as a guest** to search and filter the catalog, including
+part names and prices, without signing in. GitHub sign-in is required to manage
+builds and access account features; the catalog also remains directly accessible
+at `/parts`.
+
 To build and run the frontend, API, and PostgreSQL locally, set the API URL and
 start the local profile (Bash/zsh):
 

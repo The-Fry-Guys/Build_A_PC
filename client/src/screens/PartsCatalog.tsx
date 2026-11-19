@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Text, TextInput, T
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { getCatalogParts, getCatalogPriceRange, type CatalogPart } from '@/lib/api';
 import { useBuild } from '@/hooks/useBuild';
+import { useSession } from '@/auth/session-provider';
 import type { Part } from '@/types/build';
 import PriceRangeSlider from '@/components/PriceRangeSlider';
 
@@ -23,6 +24,7 @@ export default function PartsCatalog() {
     const [addedPartId, setAddedPartId] = useState<string | null>(null);
     const initialPrefetchKey = useRef<string | null>(null);
     const { addPart } = useBuild();
+    const { user } = useSession();
     const selectedCategory = category === 'All' ? undefined : category;
     const priceBounds = useQuery({
         queryKey: ['catalog-price-range'],
@@ -88,9 +90,11 @@ export default function PartsCatalog() {
                 <Text style={styles.price}>{item.price == null ? 'Price unavailable' : `$${item.price.toFixed(2)}`}</Text>
             </View>
             <Text style={styles.name}>{item.name}</Text>
-            <TouchableOpacity accessibilityRole="button" style={styles.addButton} onPress={() => addToBuild(item)}>
-                <Text style={styles.addButtonText}>{addedPartId === item.part_id ? 'Added to Build' : 'Add to Build'}</Text>
-            </TouchableOpacity>
+            {user ? (
+                <TouchableOpacity accessibilityRole="button" style={styles.addButton} onPress={() => addToBuild(item)}>
+                    <Text style={styles.addButtonText}>{addedPartId === item.part_id ? 'Added to Build' : 'Add to Build'}</Text>
+                </TouchableOpacity>
+            ) : null}
         </View>
     );
 
