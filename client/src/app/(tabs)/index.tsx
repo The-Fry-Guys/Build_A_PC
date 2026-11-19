@@ -1,4 +1,4 @@
-import { Redirect, type Href } from 'expo-router';
+import { Link, Redirect, type Href } from 'expo-router';
 import { ActivityIndicator, Button, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,9 +23,10 @@ export default function HomeScreen() {
         <View style={styles.card}>
           <ThemedText type="title">Build a PC</ThemedText>
           <ThemedText themeColor="textSecondary">
-            Sign in with GitHub to browse parts and manage your build.
+            Browse PC parts without signing in, or sign in with GitHub to manage your build.
           </ThemedText>
           {busy ? <ActivityIndicator accessibilityLabel="Loading session" /> : <GitHubLogin />}
+          <Link href={'/parts' as Href}>Browse parts as a guest</Link>
           {error ? (
             <View style={styles.error}>
               <ThemedText accessibilityRole="alert">{error}</ThemedText>

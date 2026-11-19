@@ -24,19 +24,19 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="index" href="/" asChild>
-            <TabButton hidden>Sign in</TabButton>
+            <TabButton hidden={!!user}>Sign in</TabButton>
           </TabTrigger>
           <TabTrigger name="parts" href={'/parts' as Href} asChild>
             <TabButton>Parts</TabButton>
           </TabTrigger>
           <TabTrigger name="alex-pc" href={'/alex-pc' as Href} asChild>
-            <TabButton>My Build</TabButton>
+            <TabButton hidden={!user}>My Build</TabButton>
           </TabTrigger>
           <TabTrigger name="builds" href={'/builds' as Href} asChild>
-            <TabButton>Builds</TabButton>
+            <TabButton hidden={!user}>Builds</TabButton>
           </TabTrigger>
           <TabTrigger name="profile" href={'/profile' as Href} asChild>
-            <TabButton>Profile</TabButton>
+            <TabButton hidden={!user}>Profile</TabButton>
           </TabTrigger>
           <TabTrigger name="admin" href="/admin" asChild>
             <TabButton hidden={user?.role !== 'ADMIN'}>Admin</TabButton>
