@@ -47,7 +47,7 @@ function directoryState(overrides: Partial<ReturnType<typeof useAdminDirectory>>
 beforeEach(() => {
   jest.clearAllMocks();
   Object.values(mutations).forEach((mutation) => { mutation.isPending = false; mutation.error = null; });
-  jest.mocked(useSession).mockReturnValue({ user: admin, loading: false, error: null, refresh, expire: jest.fn(), retry: refresh, login: jest.fn(), logout: jest.fn() });
+  jest.mocked(useSession).mockReturnValue({ user: admin, loading: false, error: null, refresh, expire: jest.fn(), retry: refresh, login: jest.fn(), loginGoogle: jest.fn(), loginGoogleAndroid: jest.fn(), logout: jest.fn() });
   jest.mocked(useAdminDirectory).mockReturnValue(directory);
 });
 

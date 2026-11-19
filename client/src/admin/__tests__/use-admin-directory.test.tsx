@@ -21,7 +21,7 @@ let client: QueryClient;
 function Wrapper({ children }: PropsWithChildren) { return <QueryClientProvider client={client}>{children}</QueryClientProvider>; }
 
 beforeEach(() => {
-  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } } });
   jest.mocked(useSession).mockReturnValue({ user: admin, loading: false, error: null, login: jest.fn(), loginGoogle: jest.fn(), loginGoogleAndroid: jest.fn(), retry: refresh, refresh, expire, logout: jest.fn() });
   jest.mocked(getAdminUsers).mockResolvedValue(data);
   jest.mocked(getCatalogParts).mockResolvedValue({ ...data, content: [] });
