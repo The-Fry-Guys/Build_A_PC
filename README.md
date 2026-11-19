@@ -10,7 +10,7 @@ Project 3 for CST438 Software Engineering
 ## How to Setup Expo for development
 
 - Install Node.js **24.x** (matching Expo CI), npm, and **Java 21**.
-- Windows: use Git Bash for `load_env.sh`; use your Windows Android SDK.
+- Windows: use PowerShell for `load_env.ps1` and your Windows Android SDK.
 - From `client/`, install dependencies once (and after lockfile changes):
 
   ```bash
@@ -68,6 +68,8 @@ build when using the team's hosted Supabase database.
    bash load_env.sh
    ```
 
+   Windows PowerShell: use `.\load_env.ps1` instead.
+
 3. In another terminal opened in `client/`, build, install, and open the app:
 
    ```bash
@@ -87,7 +89,10 @@ not production or physical phones.
 
 - From /api
   - Use Java 21 and configure the root `.env` with database, JWT, and OAuth settings.
-  - Run `bash load_env.sh` to load the environment and start the API.
+  - Start the API: PowerShell `.\load_env.ps1`; Linux/macOS `bash load_env.sh`.
+    Both load the root `.env`. PowerShell supports literal `KEY=value` entries with
+    optional quotes/comments; shell expressions are not expanded.
+    If Windows blocks the script, run `powershell -ExecutionPolicy Bypass -File .\load_env.ps1`.
   - Run `curl -i http://localhost:8080/api/v1/` for API information.
   - Run `curl -i http://localhost:8080/actuator/health` for database readiness (200 UP or 503 DOWN).
   - [Admin tools (PRD-6)](docs/admin-tools.md): provisioning, supported web/Android behavior, isolated test setup, and commands for reviewers.
@@ -99,6 +104,10 @@ from `api/` to start Expo, the API, and local Postgres. Expo receives the public
 client IDs and defaults to `http://localhost:8080/api/v1`; set `EXPO_PUBLIC_API_URL`
 in the root `.env` for another reachable address. Secrets stay in the API container.
 For an image-only build, run `docker build -f api/Dockerfile .` from the repository root.
+The API images use Java 21 on Ubuntu 24.04 (`noble`). If Docker fails with
+`/bin/sh: exec format error`, restart Docker Desktop, then run
+`docker compose build --pull --no-cache api` from the repository root and retry
+`docker compose up --build`. Keep the existing database volume.
 
 API docs: [Swagger UI](http://localhost:8080/swagger-ui/index.html) displays the
 handwritten contract at `/openapi.yaml`; SpringDoc's generated implemented routes
@@ -189,7 +198,8 @@ for Expo web and Android.
    emulators use `http://10.0.2.2:8080/api/v1`; physical devices need the computer's
    reachable LAN address. Web uses `http://localhost:8080/api/v1`.
 
-From `api/`, `bash load_env.sh` loads the root `.env` before starting Spring Boot.
+From `api/`, use `.\load_env.ps1` in PowerShell or `bash load_env.sh` on Linux/macOS
+to load the root `.env` before starting Spring Boot.
 Expo loads `client/.env` when started from `client/`. Docker Compose loads the root
 `.env` into the API container while retaining its local database overrides.
 
@@ -212,7 +222,8 @@ returns `{ token, user }`. Both providers share app JWTs, `/me`, storage, and lo
    `GOOGLE_WEB_REDIRECT_URI=http://localhost:8081/auth`.
 3. Copy only the ID to `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `client/.env`.
    Compose supplies this public ID from the root settings.
-4. Start the API with `bash load_env.sh` from `api/`, then run
+4. Start the API from `api/` with `.\load_env.ps1` (PowerShell) or
+   `bash load_env.sh` (Linux/macOS), then run
    `npm run web -- --port 8081` from `client/`. Check login, refresh, logout,
    sign-in again, and cancellation/retry. An email already registered through GitHub
    returns 409; accounts are not automatically linked.
