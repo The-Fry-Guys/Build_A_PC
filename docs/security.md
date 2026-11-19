@@ -1,7 +1,8 @@
 # Security
 
-Scope: GitHub web/Android, Google web, app JWTs, builds, and read-only admin tools.
-Google Android and account deletion remain planned.
+Scope: GitHub and Google web/Android, app JWTs, builds, and read-only admin tools.
+Real Google Android login still needs a registered signing key and device verification.
+Account deletion remains planned.
 
 | Threat | Mitigation and evidence |
 | --- | --- |
@@ -22,6 +23,12 @@ Google Android and account deletion remain planned.
 - Google ID tokens require a valid signature, Google issuer, configured web-client
   audience, expiration, stable subject, and verified email. The Google verifier stays
   separate from the app-JWT decoder. [Verifier tests](../api/src/test/kotlin/com/example/demo/GoogleIdentityVerifierTests.kt).
+- Android Google uses native Sign-In with a registered package/signing SHA-1 and the
+  Web client ID as token audience. Only the app JWT is stored in SecureStore; Google
+  ID tokens are neither retained nor logged. Cancellation/late results cannot restore
+  logout; native SDK cleanup failures leave the app signed out and allow retry.
+  [Native flow tests](../client/src/lib/__tests__/google-native-flow.test.ts),
+  [session tests](../client/src/lib/__tests__/session.test.ts).
 - Enable fixture tokens only in isolated e2e. [Profile guard tests](../api/src/test/kotlin/com/example/demo/E2eProfileGuardTests.kt)
   verify production rejection. Never deploy the e2e profile or its public signing key.
 

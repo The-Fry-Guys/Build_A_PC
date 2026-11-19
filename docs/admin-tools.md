@@ -23,8 +23,8 @@ literal case-insensitive substrings or an exact UUID. The client never downloads
 directory. Private responses use `Cache-Control: no-store`; client caches are transient,
 account-scoped, cancelled and removed when permissions or the account change.
 
-GitHub sign-in is implemented on **web and Android**; Google works on **web**. Google
-Android remains planned. The Android GitHub provider stays mounted
+GitHub and Google sign-in are implemented on **web and Android**. Real Google Android
+sign-in needs signing-key registration and device verification. The Android GitHub provider stays mounted
 above navigation so the PKCE request survives the callback. Both platforms use the same
 session interface; Android stores the API token in SecureStore. Interactive device sign-in
 and the admin smoke test still need to be checked manually. See the README for the emulator

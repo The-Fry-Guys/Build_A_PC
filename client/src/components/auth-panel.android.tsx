@@ -1,7 +1,8 @@
 import { ActivityIndicator, Button, View } from 'react-native';
 import { useAndroidGitHub } from '@/auth/github-context';
 import { useSession } from '@/auth/session-provider';
-import GitHubLogin from './github-login';
+import GitHubLogin from './github-login.android';
+import GoogleLogin from './google-login.android';
 import { ThemedText } from './themed-text';
 
 export default function AuthPanel() {
@@ -19,6 +20,6 @@ export default function AuthPanel() {
       <ThemedText>Signed in as {user.display_name ?? user.email}</ThemedText>
       <ThemedText>{user.email}</ThemedText>
       <Button title="Log out" onPress={() => { void logout(); }} disabled={busy} />
-    </View> : <View style={loading ? { display: 'none' } : undefined}><GitHubLogin /></View>}
+    </View> : <View style={loading ? { display: 'none' } : undefined}><GitHubLogin disabled={busy} /><GoogleLogin disabled={busy} /></View>}
   </View>;
 }

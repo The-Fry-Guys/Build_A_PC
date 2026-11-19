@@ -1,4 +1,4 @@
-import { ApiError, exchangeGitHubCode, exchangeGoogleCode, getMe } from '../api';
+import { ApiError, exchangeGitHubCode, exchangeGoogleCode, exchangeGoogleIdToken, getMe } from '../api';
 import { tokenStore } from '../tokenStore';
 
 jest.mock('../tokenStore', () => ({
@@ -208,4 +208,15 @@ test.each([
     status,
     message: detail,
   });
+});
+
+test('native Google sends only the ID token without an app bearer token', async () => {
+  fetchMock.mockResolvedValue(response(200, { token: 'app-jwt', user }));
+  await expect(exchangeGoogleIdToken('native-token')).resolves.toEqual({ token: 'app-jwt', user });
+  const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+  expect(url).toBe('http://localhost:8080/api/v1/auth/google');
+  expect(JSON.parse(options.body as string)).toEqual({ idToken: 'native-token' });
+  expect(new Headers(options.headers).has('Authorization')).toBe(false);
+  expect(tokenStore.get).not.toHaveBeenCalled();
+  expect(tokenStore.set).not.toHaveBeenCalled();
 });

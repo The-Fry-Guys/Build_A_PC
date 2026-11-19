@@ -151,6 +151,15 @@ export function exchangeGoogleCode(
   );
 }
 
+/** Verifies a native Google ID token without attaching an existing app JWT. */
+export function exchangeGoogleIdToken(idToken: string): Promise<AppLoginResult> {
+  return request<AppLoginResult>('/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  }, false);
+}
+
 /** Loads the current account using the stored app JWT. */
 export function getMe(): Promise<AppUser> {
   return request<AppUser>('/me', { method: 'GET' }, true);

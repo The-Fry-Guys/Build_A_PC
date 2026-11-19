@@ -1,7 +1,8 @@
 # OAuth sequences
 
-GitHub works on Expo web and Android; Google works on web. Spring Boot issues
-the app JWT; Supabase hosts PostgreSQL only. Google Android remains planned.
+GitHub and Google have web and Android login implementations. Spring Boot issues
+the app JWT; Supabase hosts PostgreSQL only. Real Google Android sign-in still needs
+registration and device verification.
 
 ## GitHub — web and Android
 
@@ -88,3 +89,37 @@ sequenceDiagram
 Google's `sub` identifies the provider account. Missing configuration returns 503;
 rejected codes, invalid tokens, and unverified emails return 400; upstream failures
 return 502. Restoration and logout use the shared session behavior above.
+
+## Google ? Android
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant App as Expo Android
+    participant SDK as Native Google Sign-In
+    participant Google
+    participant API as Spring Boot API
+    participant DB as PostgreSQL
+    User->>App: Tap Sign in with Google
+    App->>SDK: Check Play Services; signIn using Web client ID
+    SDK->>Google: Native account selection and authorization
+    Google-->>SDK: ID token with Web client audience
+    SDK-->>App: ID token (or cancellation)
+    App->>API: POST /api/v1/auth/google {idToken}
+    API->>Google: Retrieve signing keys when needed
+    API->>API: Verify signature, issuer, audience, expiry, subject and verified email
+    API->>DB: Find or create GOOGLE identity and user
+    Note over API,DB: Conflicting provider email returns 409; no linking
+    API-->>App: 200 {token, user}, Cache-Control no-store
+    App->>App: Save only app JWT in SecureStore
+    App->>API: GET /api/v1/me with Bearer app JWT
+    API-->>App: Current profile
+    User->>App: Log out
+    App->>App: Remove saved app JWT and profile
+    App->>SDK: signOut (serialized after any pending sign-in)
+```
+
+Cancellation sends no API request. Late results cannot restore a logged-out session.
+Google tokens are transient. Logout clears the native SDK session without revoking
+Google consent or existing app JWTs; failed SDK cleanup permits retry.

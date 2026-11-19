@@ -25,7 +25,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-/** Real HTTP, Spring Security, transactions, and Postgres; only GitHub is mocked. */
+/** Real HTTP, Spring Security, transactions, and Postgres; external GitHub and Google verification are mocked. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import(PostgresTestConfiguration::class)
@@ -53,6 +53,9 @@ class ApiHttpIntegrationTests {
 
     @MockitoBean
     private lateinit var github: GitHubIdentityClient
+
+    @MockitoBean
+    private lateinit var google: GoogleIdentityVerifier
 
     private val email = "http-${UUID.randomUUID()}@example.test"
     private val providerId = UUID.randomUUID().toString()
@@ -244,4 +247,41 @@ class ApiHttpIntegrationTests {
         val security = document.path("paths").path("/api/v1/me").path("get").path("security")
         assertTrue(security.any { it.has("bearerAuth") })
     }
+    @Test
+    fun `native Google login persists one identity and issues a usable app JWT`() {
+        `when`(google.verify("synthetic-native-token")).thenReturn(
+            ProviderIdentity(AuthProvider.GOOGLE, providerId, email, true, "Native Google User"),
+        )
+        fun nativeLogin() = request().contentType(ContentType.JSON)
+            .body("""{"idToken":"synthetic-native-token"}""")
+            .post("/api/v1/auth/google")
+            .then().statusCode(200).header("Cache-Control", "no-store").extract().asString()
+        val first = parse(nativeLogin())
+        val userId = first.path("user").path("id").stringValue()
+        val token = first.path("token").stringValue()
+        assertEquals(userId, decoder.decode(token).subject)
+        val me = request().header("Authorization", "Bearer $token").get("/api/v1/me")
+            .then().statusCode(200).extract().asString()
+        assertEquals(email, parse(me).path("email").stringValue())
+        assertEquals(userId, parse(nativeLogin()).path("user").path("id").stringValue())
+        val saved = identities.findAllByUserId(UUID.fromString(userId))
+        assertEquals(listOf(AuthProvider.GOOGLE), saved.map { it.provider })
+    }
+
+    @Test
+    fun `native Google cannot link an email owned by GitHub`() {
+        val user = users.saveAndFlush(User(email = email))
+        identities.saveAndFlush(Identity(user, AuthProvider.GITHUB, providerId))
+        `when`(google.verify("conflicting-native-token")).thenReturn(
+            ProviderIdentity(AuthProvider.GOOGLE, "google-$providerId", email, true, "Conflict"),
+        )
+        val body = request().contentType(ContentType.JSON)
+            .body("""{"idToken":"conflicting-native-token"}""")
+            .post("/api/v1/auth/google")
+            .then().statusCode(409).extract().asString()
+        assertProblem(body, 409, "/api/v1/auth/google")
+        assertTrue(parse(body).path("detail").stringValue().contains("GitHub"))
+        assertEquals(listOf(AuthProvider.GITHUB), identities.findAllByUserId(assertNotNull(user.id)).map { it.provider })
+    }
+
 }

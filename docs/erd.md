@@ -66,10 +66,10 @@ thermal-paste, ups, video-card, webcam, wired-network-card, wireless-network-car
   toward the user. Deletion from user to identities is enforced by the database.
 - Existing identity uniqueness and deletion constraints meet the auth appendix;
   no schema changes are needed for these mappings.
-- GitHub web/Android and Google web reuse these tables and account rules; no Google
+- GitHub and Google web/Android reuse these tables and account rules; no Google
   schema changes are needed. `/api/v1/auth/github`, `/api/v1/auth/google`, and
   `/api/v1/me` are implemented. Existing identities reuse their user; conflicting
-  verified emails return 409 without linking. Google Android remains planned.
+  verified emails return 409 without linking. Native Google uses the same verified identity.
 - Catalog persistence maps nullable `price`, includes `created_at`, and uses the
   lowercase category values listed above. Local/test databases use the committed
   schema; production remains hosted in Supabase.

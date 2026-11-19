@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-/** Connects Google web verification, accounts, and app-token issuance. */
+/** Connects Google web and native verification, accounts, and app-token issuance. */
 @RestController
 @RequestMapping(
     "/api/v1/auth",
@@ -18,10 +18,11 @@ import org.springframework.web.bind.annotation.RestController
 )
 class GoogleAuthController(
     private val google: GoogleIdentityClient,
+    private val verifier: GoogleIdentityVerifier,
     private val accounts: AccountService,
     private val tokens: AppTokenService,
 ) {
-    /** Exchanges a Google authorization code for an application session. */
+    /** Verifies a Google credential and issues an application session. */
     @PostMapping(
         "/google",
         consumes = [MediaType.APPLICATION_JSON_VALUE],
@@ -29,11 +30,15 @@ class GoogleAuthController(
     fun login(
         @Valid @RequestBody request: GoogleLoginRequest,
     ): ResponseEntity<GoogleLoginResponse> {
-        val identity = google.exchange(
-            code = request.code,
-            codeVerifier = request.codeVerifier,
-            redirectUri = request.redirectUri,
-        )
+        val identity = if (request.idToken != null) {
+            verifier.verify(request.idToken)
+        } else {
+            google.exchange(
+                code = requireNotNull(request.code),
+                codeVerifier = requireNotNull(request.codeVerifier),
+                redirectUri = requireNotNull(request.redirectUri),
+            )
+        }
 
         val user = accounts.findOrCreate(identity)
 

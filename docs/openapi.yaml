@@ -291,8 +291,30 @@ components:
                 type: string
 
     GoogleAuthRequest:
+      description: Exactly one credential flow; mixing native and web fields is rejected.
+      oneOf:
+        - $ref: '#/components/schemas/GoogleWebAuthRequest'
+        - $ref: '#/components/schemas/GoogleNativeAuthRequest'
+
+    GoogleNativeAuthRequest:
+      type: object
+      required: [idToken]
+      not:
+        anyOf:
+          - required: [code]
+          - required: [code_verifier]
+          - required: [redirect_uri]
+      properties:
+        idToken:
+          type: string
+          minLength: 1
+          description: Google ID token obtained by native sign-in using our Web client ID as audience.
+
+    GoogleWebAuthRequest:
       type: object
       required: [code, code_verifier, redirect_uri]
+      not:
+        required: [idToken]
       properties:
         code:
           type: string
@@ -560,7 +582,7 @@ paths:
       x-implementation-status: implemented
       tags: [ Auth ]
       summary: Authenticate with Google and receive an API JWT
-      description: Web authorization-code exchange with PKCE. Native ID-token input remains planned.
+      description: Web authorization-code exchange with PKCE or Android native ID-token verification. Returns our app JWT; Google tokens are not retained.
       requestBody:
         required: true
         content:

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
 
-import { exchangeGitHubCode, exchangeGoogleCode, getMe } from '@/lib/api';
+import { exchangeGitHubCode, exchangeGoogleCode, exchangeGoogleIdToken, getMe } from '@/lib/api';
+import { nativeGoogle } from '@/lib/google-native';
 import { Session } from '@/lib/session';
 import { tokenStore } from '@/lib/tokenStore';
 
@@ -13,6 +14,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     getMe,
     exchange: exchangeGitHubCode,
     exchangeGoogle: exchangeGoogleCode,
+    exchangeGoogleToken: exchangeGoogleIdToken,
+    nativeGoogle,
   }));
   useEffect(() => { void session.restore(); }, [session]);
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>;
@@ -27,6 +30,7 @@ export function useSession() {
     ...state,
     login: session.login,
     loginGoogle: session.loginGoogle,
+    loginGoogleAndroid: session.loginGoogleAndroid,
     retry: session.restore,
     refresh: session.refresh,
     expire: session.expire,

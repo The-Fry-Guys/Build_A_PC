@@ -29,6 +29,9 @@ class GoogleAuthControllerTests @Autowired constructor(
     private lateinit var google: GoogleIdentityClient
 
     @MockitoBean
+    private lateinit var identityVerifier: GoogleIdentityVerifier
+
+    @MockitoBean
     private lateinit var accounts: AccountService
 
     @MockitoBean
@@ -144,7 +147,7 @@ class GoogleAuthControllerTests @Autowired constructor(
             jsonPath("$.instance") { value(path) }
         }
 
-        verifyNoInteractions(google, accounts, tokens)
+        verifyNoInteractions(google, identityVerifier, accounts, tokens)
     }
 
     @ParameterizedTest
@@ -152,7 +155,10 @@ class GoogleAuthControllerTests @Autowired constructor(
         strings = [
             "{}",
             "{broken-json",
-            """{"idToken":"native-input-not-supported-yet"}""",
+            """{"idToken":" "}""",
+            """{"code":"incomplete"}""",
+            """{"idToken":"token","code":"mixed"}""",
+            """{"idToken":"token","redirect_uri":"mixed"}""",
         ],
     )
     fun `missing fields and malformed requests are rejected`(body: String) {
@@ -161,7 +167,7 @@ class GoogleAuthControllerTests @Autowired constructor(
             content { contentTypeCompatibleWith("application/problem+json") }
         }
 
-        verifyNoInteractions(google, accounts, tokens)
+        verifyNoInteractions(google, identityVerifier, accounts, tokens)
     }
 
     @Test
@@ -211,4 +217,56 @@ class GoogleAuthControllerTests @Autowired constructor(
 
         verifyNoInteractions(accounts, tokens)
     }
+    @Test
+    fun `native ID token is verified before accounts and app tokens`() {
+        `when`(identityVerifier.verify("native-id-token")).thenReturn(identity)
+        `when`(accounts.findOrCreate(identity)).thenReturn(user)
+        `when`(tokens.issueFor(user)).thenReturn("native-app-jwt")
+        postLogin("""{"idToken":"native-id-token"}""").andExpect {
+            status { isOk() }
+            header { string("Cache-Control", "no-store"); string("Pragma", "no-cache") }
+            jsonPath("$.token") { value("native-app-jwt") }
+            jsonPath("$.user.id") { value(user.id.toString()) }
+            jsonPath("$.user.email") { value(user.email) }
+            jsonPath("$.idToken") { doesNotExist() }
+        }
+        val order = inOrder(identityVerifier, accounts, tokens)
+        order.verify(identityVerifier).verify("native-id-token")
+        order.verify(accounts).findOrCreate(identity)
+        order.verify(tokens).issueFor(user)
+        verifyNoInteractions(google)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [400, 502, 503])
+    fun `native verification failures never persist accounts`(status: Int) {
+        `when`(identityVerifier.verify("invalid-token"))
+            .thenThrow(ResponseStatusException(HttpStatus.valueOf(status), "Google sign-in failed."))
+        postLogin("""{"idToken":"invalid-token"}""").andExpect {
+            status { isEqualTo(status) }
+            content { contentTypeCompatibleWith("application/problem+json") }
+            jsonPath("$.detail") { value("Google sign-in failed.") }
+            jsonPath("$.token") { doesNotExist() }
+        }
+        verifyNoInteractions(google, accounts, tokens)
+    }
+
+    @Test
+    fun `native unverified email never persists an account`() {
+        `when`(identityVerifier.verify("unverified" )).thenThrow(EmailNotVerifiedException())
+        postLogin("""{"idToken":"unverified"}""").andExpect { status { isBadRequest() } }
+        verifyNoInteractions(google, accounts, tokens)
+    }
+
+    @Test
+    fun `native GitHub email conflict does not issue an app token`() {
+        `when`(identityVerifier.verify("native-id-token")).thenReturn(identity)
+        `when`(accounts.findOrCreate(identity)).thenThrow(ProviderConflictException(AuthProvider.GITHUB))
+        postLogin("""{"idToken":"native-id-token"}""").andExpect {
+            status { isConflict() }
+            jsonPath("$.detail") { value("This email is already registered with GitHub. Sign in with that provider.") }
+        }
+        verifyNoInteractions(google, tokens)
+    }
+
 }
