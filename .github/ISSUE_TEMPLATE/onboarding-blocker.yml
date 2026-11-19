@@ -1,0 +1,37 @@
+name: Visitor onboarding blocker
+description: Record one issue that blocked a visitor while following the README or runbook.
+title: "[onboarding] "
+labels: [onboarding]
+body:
+  - type: input
+    id: readme_step
+    attributes:
+      label: Exact README or runbook step
+      description: Include the heading and step number visitors followed.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command and actual output
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: Operating system and version
+    validations:
+      required: true
+  - type: input
+    id: docker_version
+    attributes:
+      label: Docker Engine/Desktop and Compose versions
+    validations:
+      required: true

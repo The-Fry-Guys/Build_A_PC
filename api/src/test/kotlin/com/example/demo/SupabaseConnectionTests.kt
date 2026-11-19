@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.data.domain.PageRequest
-import org.springframework.data.domain.Sort
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.jdbc.core.JdbcTemplate
@@ -62,7 +61,7 @@ class SupabaseConnectionTests @Autowired constructor(
     /** Verifies that the HTTP catalog route returns the same records queried from Supabase. */
     @Test
     fun `parts endpoint returns the live Supabase page`() {
-        val expected = repository.findAll(PageRequest.of(0, 10, Sort.by("id")))
+        val expected = repository.findMostUsed(PageRequest.of(0, 10))
         val response = mvc.get("/api/v1/parts?page=0&size=10")
             .andExpect {
                 status { isOk() }

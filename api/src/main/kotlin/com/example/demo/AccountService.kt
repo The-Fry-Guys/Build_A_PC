@@ -2,12 +2,16 @@ package com.example.demo
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.http.HttpStatus
+import org.springframework.web.server.ResponseStatusException
+import java.util.UUID
 
 /** Finds existing accounts or creates accounts from verified provider identities. */
 @Service
 class AccountService(
     private val users: UserRepository,
     private val identities: IdentityRepository,
+    private val pcBuildRepository: PCBuildRepository
 ) {
     /** Applies the required identity and email rules in one database transaction. */
     @Transactional
@@ -58,5 +62,24 @@ class AccountService(
         )
 
         return user
+    }
+
+    /* Updates the user's personal information */
+    @Transactional
+    fun updateProfile(userId: UUID, request: ProfileUpdateRequest): User {
+        val user = users.findById(userId)
+            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "USER NOT FOUND") }
+
+        user.displayName = request.displayName
+        return users.save(user)
+    }
+
+    /* Deletes the user's account and purges all associated data. */
+    @Transactional
+    fun deleteAccount(userId: UUID) {
+        val userIdentities = identities.findAllByUserId(userId)
+        identities.deleteAll(userIdentities)
+        pcBuildRepository.deleteByUserId(userId)
+        users.deleteById(userId)
     }
 }

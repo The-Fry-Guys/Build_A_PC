@@ -15,15 +15,22 @@ RUN ./gradlew bootJar -x test --no-daemon
 FROM eclipse-temurin:21-jre-noble
 WORKDIR /app
 
-RUN useradd --system --no-create-home spring
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --no-create-home spring
 USER spring
+
+# Keep JVM heap usage within the container limit while leaving room for native memory.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0"
 
 # Plain jar is disabled by Spring Boot's Gradle plugin only for bootJar; pick the boot jar
 COPY --from=build /app/api/build/libs/*-SNAPSHOT.jar app.jar
 
-EXPOSE 8080
+EXPOSE 10000
 
-# TODO: add a HEALTHCHECK against /actuator/health (needs curl or wget in the JRE image)
-# TODO: set JVM memory flags (e.g. -XX:MaxRAMPercentage) once deployment resources are known
-# TODO: add a CI step to build/push this image once a hosting target is chosen
+# Report unhealthy when the API or its database health check is unavailable.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD curl --fail --silent --show-error "http://localhost:${PORT:-8080}/actuator/health" || exit 1
+
 ENTRYPOINT ["java", "-jar", "app.jar"]

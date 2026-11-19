@@ -1,101 +1,47 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Link, Redirect, type Href } from 'expo-router';
+import { ActivityIndicator, Button, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import AuthPanel from '@/components/auth-panel';
-import { HintRow } from '@/components/hint-row';
+import { useAndroidGitHub } from '@/auth/github-context';
+import { useSession } from '@/auth/session-provider';
+import GitHubLogin from '@/components/github-login';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
+/** Sign-in entry point; authenticated users start at the parts catalog. */
 export default function HomeScreen() {
+  const { user, error, retry, loading } = useSession();
+  const { pending } = useAndroidGitHub();
+  const busy = loading || pending;
+
+  if (user) return <Redirect href={'/parts' as Href} />;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <AuthPanel />
-        {/* The decorative logo can extend over account controls on smaller screens. */}
-        <ThemedView pointerEvents="none" style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+        <View style={styles.card}>
+          <ThemedText type="title">Build a PC</ThemedText>
+          <ThemedText themeColor="textSecondary">
+            Browse PC parts without signing in, or sign in with GitHub to manage your build.
           </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+          {busy ? <ActivityIndicator accessibilityLabel="Loading session" /> : <GitHubLogin />}
+          <Link href={'/parts' as Href}>Browse parts as a guest</Link>
+          {error ? (
+            <View style={styles.error}>
+              <ThemedText accessibilityRole="alert">{error}</ThemedText>
+              <Button title="Retry" onPress={() => { void retry(); }} disabled={busy} />
+            </View>
+          ) : null}
+        </View>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  safeArea: { flex: 1, width: '100%', maxWidth: MaxContentWidth, justifyContent: 'center', padding: Spacing.four },
+  card: { gap: Spacing.three, alignItems: 'center', padding: Spacing.five },
+  error: { gap: Spacing.two, alignItems: 'center' },
 });

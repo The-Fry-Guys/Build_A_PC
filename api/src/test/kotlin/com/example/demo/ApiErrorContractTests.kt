@@ -31,7 +31,7 @@ class ApiErrorContractTests @Autowired constructor(private val mvc: MockMvc) {
     /** Verifies that a catalog query failure returns sanitized HTTP 500 Problem Details. */
     @Test
     fun `catalog failure returns documented server error`() {
-        `when`(repository.findAll(any(Pageable::class.java)))
+        `when`(repository.findMostUsed(any(Pageable::class.java) ?: Pageable.unpaged()))
             .thenThrow(DataAccessResourceFailureException("private database connection information"))
         mvc.get("/api/v1/parts").andExpect {
             status { isInternalServerError() }

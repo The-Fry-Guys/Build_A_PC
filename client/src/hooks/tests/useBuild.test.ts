@@ -10,6 +10,7 @@ describe('useBuild Hook', () => {
         price: 300.00,
         socket: 'AM5',
         estimated_wattage: 100,
+        created_at: new Date().toISOString()
     };
 
     const mockMobo: MotherboardDetails = {
@@ -19,6 +20,7 @@ describe('useBuild Hook', () => {
         price: 200.00,
         socket: 'AM5',
         memory_slots: 'DDR5',
+        created_at: new Date().toISOString()
     };
 
     it('initializes with an empty build', async () => {
@@ -41,6 +43,18 @@ describe('useBuild Hook', () => {
         });
         expect(result.current.selectedParts.length).toBe(2);
         expect(result.current.getTotalPrice()).toBe(500.00);
+    });
+
+    it('keeps nullable prices safe in the build total', async () => {
+        const { result } = await renderHook(() => useBuild());
+        const unpricedCpu = { ...mockCpu, part_id: 'cpu-unpriced', price: null };
+
+        await act(async () => {
+            result.current.addPart(unpricedCpu);
+        });
+
+        expect(result.current.selectedParts).toEqual([unpricedCpu]);
+        expect(result.current.getTotalPrice()).toBe(0);
     });
 
     it('removes parts by ID', async () => {

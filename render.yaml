@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: build-a-pc-api
+    runtime: docker
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: APP_JWT_ISSUER
+        sync: false
+      - key: APP_JWT_SECRET_BASE64
+        generateValue: true
+      - key: APP_JWT_TTL
+        value: PT1H
+      - key: APP_CORS_ORIGINS
+        sync: false
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: none
+      - key: GITHUB_WEB_CLIENT_ID
+        sync: false
+      - key: GITHUB_WEB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_WEB_REDIRECT_URI
+        sync: false
+      - key: GITHUB_ANDROID_CLIENT_ID
+        sync: false
+      - key: GITHUB_ANDROID_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_ANDROID_REDIRECT_URI
+        sync: false

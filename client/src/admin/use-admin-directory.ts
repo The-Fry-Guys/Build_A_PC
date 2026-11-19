@@ -1,8 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { useSession } from '@/auth/session-provider';
-import { ApiError, getAdminUsers, getCatalogParts, type AppUser, type CatalogPart, type DirectoryPage } from '@/lib/api';
+import { ApiError, createAdminPart, deleteAdminPart, deleteAdminUser, getAdminUsers, getCatalogParts, updateAdminPart, updateAdminUser, type AdminPartInput, type AppUser, type CatalogPart, type DirectoryPage, type UpdateAdminUserInput } from '@/lib/api';
 
 import { clearAdminQueries } from './query-provider';
 
@@ -36,6 +36,22 @@ export function useAdminDirectory(kind: DirectoryKind, enabled: boolean) {
       : getCatalogParts({ ...search, signal }),
   });
 
+  const afterMutation = async () => {
+    setSearch((current) => current.page === 0 ? current : { ...current, page: 0 });
+    if (accountId) await client.invalidateQueries({ queryKey: ['admin', accountId] });
+  };
+  const mutationError = async (error: unknown) => {
+    if (!(error instanceof ApiError) || ![401, 403].includes(error.status) || !accountId) return;
+    await clearAdminQueries(client, accountId);
+    if (error.status === 401) await expire();
+    else await refresh();
+  };
+  const userUpdate = useMutation({ mutationFn: ({ id, input }: { id: string; input: UpdateAdminUserInput }) => updateAdminUser(id, input), onSuccess: afterMutation, onError: mutationError });
+  const userDelete = useMutation({ mutationFn: (id: string) => deleteAdminUser(id), onSuccess: afterMutation, onError: mutationError });
+  const partCreate = useMutation({ mutationFn: (input: AdminPartInput) => createAdminPart(input), onSuccess: afterMutation, onError: mutationError });
+  const partUpdate = useMutation({ mutationFn: ({ id, input }: { id: string; input: AdminPartInput }) => updateAdminPart(id, input), onSuccess: afterMutation, onError: mutationError });
+  const partDelete = useMutation({ mutationFn: (id: string) => deleteAdminPart(id), onSuccess: afterMutation, onError: mutationError });
+
   useEffect(() => {
     if (!(query.error instanceof ApiError) || ![401, 403].includes(query.error.status) || !accountId) return;
     void clearAdminQueries(client, accountId);
@@ -48,5 +64,6 @@ export function useAdminDirectory(kind: DirectoryKind, enabled: boolean) {
     if (page >= 0 && query.data && page < query.data.totalPages) setSearch((current) => ({ ...current, page }));
   };
 
-  return { ...query, text, setText, page: search.page, setPage, pendingSearch };
+  return { ...query, text, setText, page: search.page, setPage, pendingSearch,
+    mutations: { userUpdate, userDelete, partCreate, partUpdate, partDelete } };
 }

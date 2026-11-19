@@ -1,18 +1,19 @@
 # Run from the api folder: docker compose --env-file ../.env up --build
 #
 # Local development only. Physical devices need a reachable LAN or HTTPS API URL.
+# Run from the repository root. Default uses the hosted API; use --profile local
+# with EXPO_PUBLIC_API_URL=http://localhost:8080/api/v1 for the local API.
 services:
   expo:
     build:
       context: ../client
+    env_file:
+      - ../client/.env
     ports:
       - "8081:8081"
     environment:
       EXPO_PACKAGER_PROXY_URL: ${EXPO_PACKAGER_PROXY_URL:-http://localhost:8081}
-      EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://localhost:8080/api/v1}
-      EXPO_PUBLIC_GITHUB_WEB_CLIENT_ID: ${GITHUB_WEB_CLIENT_ID:-}
-      EXPO_PUBLIC_GITHUB_ANDROID_CLIENT_ID: ${GITHUB_ANDROID_CLIENT_ID:-}
-      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${GOOGLE_WEB_CLIENT_ID:-}
+      EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-https://build-a-pc-w99e.onrender.com/api/v1}
     volumes:
       - ../client/src:/app/src
       - ../client/assets:/app/assets
@@ -21,6 +22,7 @@ services:
     tty: true
 
   api:
+    profiles: [local]
     build:
       context: ..
       dockerfile: api/Dockerfile
@@ -29,7 +31,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/buildapc
+      # Compose networking uses the service name. DB_URL is for host-run Spring Boot.
+      SPRING_DATASOURCE_URL: ${COMPOSE_DB_URL:-jdbc:postgresql://db:5432/buildapc}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:?required}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?required}
       # The SQL initialization script owns schema creation on fresh volumes.
@@ -39,6 +42,7 @@ services:
         condition: service_healthy
 
   db:
+    profiles: [local]
     image: postgres:16
     environment:
       POSTGRES_DB: buildapc
@@ -50,7 +54,7 @@ services:
       - db-data:/var/lib/postgresql/data
       - ./src/main/resources/db/migration/V1__initial_schema.sql:/docker-entrypoint-initdb.d/001-initial-schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10

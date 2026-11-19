@@ -6,32 +6,40 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
-import { SymbolView } from 'expo-symbols';
 import type { ComponentProps } from 'react';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import type { Href } from 'expo-router';
+import { Pressable, View, StyleSheet } from 'react-native';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useSession } from '@/auth/session-provider';
 
-import { ExternalLink } from './external-link';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
 export default function AppTabs() {
   const { user } = useSession();
   return (
-    <Tabs>
-      <TabSlot style={{ height: '100%' }} />
+    <Tabs style={{ flex: 1, minHeight: 0, height: '100vh', position: 'relative', overflow: 'hidden' }}>
+      <TabSlot style={{ flex: 1, minHeight: 0, paddingBottom: 88, overflow: 'hidden' }} />
       <TabList asChild>
         <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+          <TabTrigger name="index" href="/" asChild>
+            <TabButton hidden={!!user}>Sign in</TabButton>
+          </TabTrigger>
+          <TabTrigger name="parts" href={'/parts' as Href} asChild>
+            <TabButton>Parts</TabButton>
+          </TabTrigger>
+          <TabTrigger name="alex-pc" href={'/alex-pc' as Href} asChild>
+            <TabButton hidden={!user}>My Build</TabButton>
+          </TabTrigger>
+          <TabTrigger name="builds" href={'/builds' as Href} asChild>
+            <TabButton hidden={!user}>Builds</TabButton>
+          </TabTrigger>
+          <TabTrigger name="profile" href={'/profile' as Href} asChild>
+            <TabButton hidden={!user}>Profile</TabButton>
           </TabTrigger>
           <TabTrigger name="admin" href="/admin" asChild>
             <TabButton hidden={user?.role !== 'ADMIN'}>Admin</TabButton>
-          </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -58,28 +66,14 @@ export function TabButton({ children, isFocused, hidden, ...props }: TabButtonPr
 }
 
 export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
+          Build a PC
         </ThemedText>
 
         {props.children}
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
-            <SymbolView
-              tintColor={colors.text}
-              name={{ ios: 'arrow.up.right.square', web: 'link' }}
-              size={12}
-            />
-          </Pressable>
-        </ExternalLink>
       </ThemedView>
     </View>
   );
@@ -89,6 +83,7 @@ const styles = StyleSheet.create({
   tabListContainer: {
     position: 'absolute',
     width: '100%',
+    bottom: 12,
     padding: Spacing.three,
     justifyContent: 'center',
     alignItems: 'center',
@@ -100,7 +95,7 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.five,
     flexDirection: 'row',
     alignItems: 'center',
-    flexGrow: 1,
+    flexGrow: 0,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
   },
@@ -114,12 +109,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
-  },
-  externalPressable: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
   },
 });

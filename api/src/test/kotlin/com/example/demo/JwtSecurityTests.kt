@@ -61,6 +61,9 @@ class JwtSecurityTests {
     @MockitoBean
     private lateinit var catalog: CatalogPartRepository
 
+    @MockitoBean
+    private lateinit var accountService: AccountService
+
     private val userId = UUID.randomUUID()
 
     private val user = User(
@@ -178,7 +181,7 @@ class JwtSecurityTests {
     /** Public catalog reads remain accessible without an app token. */
     @Test
     fun `catalog remains public`() {
-        `when`(catalog.findAll(any(Pageable::class.java)))
+        `when`(catalog.findMostUsed(any(Pageable::class.java) ?: Pageable.unpaged()))
             .thenReturn(Page.empty<CatalogPart>())
 
         mvc.get("/api/v1/parts").andExpect { status { isOk() } }

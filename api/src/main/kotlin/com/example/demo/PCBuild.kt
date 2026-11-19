@@ -10,6 +10,7 @@ import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import java.util.UUID
 import java.time.Instant
+import java.math.BigDecimal
 
 /* Maps a user's saved PC build to the pc_builds database table. */
 @Entity
@@ -23,6 +24,9 @@ class PCBuild(
 
     @Column(nullable = false)
     var name: String = "",
+
+    @Column(precision = 10, scale = 2)
+    var budget: BigDecimal? = null,
 
     @OneToMany(mappedBy = "build", cascade = [CascadeType.ALL], orphanRemoval = true)
     val parts: MutableList<BuildPart> = mutableListOf(),

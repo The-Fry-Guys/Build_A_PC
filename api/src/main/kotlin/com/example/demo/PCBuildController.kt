@@ -32,6 +32,7 @@ class PCBuildController(
     @Transactional(readOnly = true)
     fun getMyBuilds(
         authentication: Authentication,
+        @RequestParam(defaultValue = "") q: String,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int,
     ): PcBuildPage {
@@ -42,12 +43,13 @@ class PCBuildController(
         if (page.toLong() * size > Int.MAX_VALUE) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Requested page offset is too large")
         }
-        val builds = buildRepository.findAllByUserId(
-            userId,
-            PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"))),
-        )
+        val pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")))
+        val builds = if (q.isBlank()) buildRepository.findAllByUserId(userId, pageable)
+        else buildRepository.findAllByUserIdAndNameContainingIgnoreCase(userId, q.trim(), pageable)
         return PcBuildPage(
-            content = builds.content.map { BuildResponse(it.id, it.userId, it.name, it.createdAt) },
+            content = builds.content.map { build ->
+                BuildResponse(build.id, build.userId, build.name, build.budget, build.totalPrice(), build.createdAt)
+            },
             page = page,
             size = size,
             totalElements = builds.totalElements,
@@ -61,7 +63,8 @@ class PCBuildController(
     fun createBuild(authentication: Authentication, @RequestBody request: CreateBuildRequest): BuildDetailResponse {
         val userId = authentication.userId()
         val parts = validatedParts(request)
-        val build = PCBuild(userId = userId, name = request.name)
+        validateBudget(request.budget)
+        val build = PCBuild(userId = userId, name = request.name, budget = request.budget)
         build.parts.addAll(parts.map { (part, quantity) -> BuildPart(build = build, catalogPart = part, quantity = quantity) })
         return buildRepository.save(build).toBuildDetailResponse()
     }
@@ -80,7 +83,9 @@ class PCBuildController(
     ): BuildDetailResponse {
         val build = ownedBuild(id, authentication.userId())
         val parts = validatedParts(request)
+        validateBudget(request.budget)
         build.name = request.name
+        build.budget = request.budget
         val requestedParts = parts.associateBy { (part, _) -> part.id }
         val existingParts = build.parts.associateBy { it.catalogPart.id }
         build.parts.removeAll { it.catalogPart.id !in requestedParts }
@@ -103,6 +108,7 @@ class PCBuildController(
         buildRepository.delete(build)
     }
 
+    /** Loads a build only when it belongs to the authenticated account. */
     private fun ownedBuild(id: UUID, userId: UUID): PCBuild {
         val build = buildRepository.findById(id).orElseThrow { ResourceNotFoundException() }
         if (build.userId != userId) {
@@ -111,6 +117,7 @@ class PCBuildController(
         return build
     }
 
+    /** Validates a build name and resolves its unique catalog part selections. */
     private fun validatedParts(request: CreateBuildRequest): List<Pair<CatalogPart, Int>> {
         if (request.name.isBlank() || request.name.length > 255 || (request.partIds == null) == (request.parts == null)) {
             throw ResponseStatusException(
@@ -130,6 +137,13 @@ class PCBuildController(
         val quantities = selections.associate { it.partId to it.quantity!! }
         return parts.map { it to quantities.getValue(it.id) }
     }
+
+    /** Rejects negative budgets and values exceeding the database precision. */
+    private fun validateBudget(budget: BigDecimal?) {
+        if (budget != null && (budget.signum() < 0 || budget.scale().coerceAtLeast(0) > 2 || budget.precision() - budget.scale().coerceAtLeast(0) > 8)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Budget must be nonnegative and have at most 8 whole digits and 2 decimal places.")
+        }
+    }
 }
 
 private fun Authentication.userId(): UUID = try {
@@ -142,6 +156,7 @@ data class CreateBuildRequest(
     val name: String,
     val partIds: List<UUID>? = null,
     val parts: List<BuildPartWriteRequest>? = null,
+    val budget: BigDecimal? = null,
 )
 
 data class BuildPartWriteRequest(val partId: UUID, val quantity: Int?)
@@ -158,12 +173,15 @@ data class BuildResponse(
     @get:JsonProperty("build_id") val buildId: UUID,
     @get:JsonProperty("user_id") val userId: UUID,
     val name: String,
+    val budget: BigDecimal?,
+    @get:JsonProperty("total_price") val totalPrice: BigDecimal,
     @get:JsonProperty("created_at") val createdAt: Instant,
 )
 
 data class BuildDetailResponse(
     val id: UUID,
     val name: String,
+    val budget: BigDecimal?,
     val parts: List<BuildPartResponse>,
     val createdAt: Instant,
 )
@@ -171,12 +189,18 @@ data class BuildDetailResponse(
 private fun PCBuild.toBuildDetailResponse() = BuildDetailResponse(
     id = id,
     name = name,
+    budget = budget,
     parts = parts.sortedBy { it.catalogPart.id }.map {
         val part = it.catalogPart
         BuildPartResponse(part.id, part.category, part.name, part.price, part.createdAt, it.quantity)
     },
     createdAt = createdAt,
 )
+
+/** Computes the current build total while treating parts without a listed price as zero. */
+private fun PCBuild.totalPrice(): BigDecimal = parts.fold(BigDecimal.ZERO) { total, selection ->
+    total + (selection.catalogPart.price ?: BigDecimal.ZERO) * selection.quantity.toBigDecimal()
+}
 
 data class BuildPartResponse(
     @get:JsonProperty("part_id") val partId: UUID,
