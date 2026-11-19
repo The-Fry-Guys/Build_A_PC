@@ -21,6 +21,7 @@ test.each([false, true])('a route hydrating after restoration has matching HTML 
     store: { get: async () => signedIn ? 'jwt' : null, set: async () => {}, clear: async () => {} },
     getMe: async () => user,
     exchange: jest.fn(),
+    exchangeGoogle: jest.fn(),
   });
   jest.mocked(Session).mockImplementation(() => session);
   const tree = createElement(SessionProvider, null, createElement(SessionLabel));

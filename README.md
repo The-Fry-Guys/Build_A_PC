@@ -98,6 +98,8 @@ Supabase database.
    ./gradlew bootRun
    ```
 
+   Windows PowerShell: use `.\load_env.ps1` instead.
+
 3. In another terminal opened in `client/`, build, install, and open the app:
 
    ```bash
@@ -201,7 +203,8 @@ disposable PostgreSQL 16 Testcontainers initialized from the committed SQL schem
 no Supabase credentials or manually initialized test database are required.
 `ApiHttpIntegrationTests` uses REST Assured against a real test server and that
 Postgres database, covering login, JWTs, 400/401/403/404/409, and documentation.
-Only GitHub's external identity client is mocked; no real login is needed.
+GitHub's identity client and Google's verification boundary are mocked; cryptographic
+Google verification has separate tests. No real provider login is needed.
 Run account repository tests alone with
 `./gradlew test --tests com.example.demo.AccountRepositoryTests`.
 
@@ -250,6 +253,54 @@ The browser origin allowlist defaults to `http://localhost:8081` via
 `APP_CORS_ORIGINS`; native callbacks are not browser CORS origins. Production will
 need separate callback registrations/configuration and an explicit HTTPS origin.
 No refresh tokens or account linking are part of this increment.
+
+## Google OAuth — web
+
+Google web and Android login paths are implemented. Real Android Google sign-in
+remains to be checked after registering the build's signing SHA-1.
+`POST /api/v1/auth/google` accepts web `{ code, code_verifier, redirect_uri }` or
+Android `{ idToken }` (never both), and returns `{ token, user }`. Both providers share app JWTs, `/me`, storage, and logout.
+
+1. Use a Google **Web application** OAuth client with origin `http://localhost:8081`
+   and callback `http://localhost:8081/auth`. Request only `openid email profile`.
+2. In the root `.env`, set `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_WEB_CLIENT_SECRET`, and
+   `GOOGLE_WEB_REDIRECT_URI=http://localhost:8081/auth`.
+3. Copy only the ID to `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` in `client/.env`.
+   Compose supplies this public ID from the root settings.
+4. Start the API from `api/` with `.\load_env.ps1` (PowerShell) or
+   `bash load_env.sh` (Linux/macOS), then run
+   `npm run web -- --port 8081` from `client/`. Check login, refresh, logout,
+   sign-in again, and cancellation/retry. An email already registered through GitHub
+   returns 409; accounts are not automatically linked.
+
+Android setup:
+
+1. Register an **Android OAuth client** in the same Google Cloud project, using
+   package `com.anonymous.client` and the SHA-1 of the key actually signing the APK.
+   Reuse the registration if the package/key pair is already registered.
+2. Reuse `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` on Android; it must match the backend's
+   `GOOGLE_WEB_CLIENT_ID`. No Android client secret, Firebase, or downloaded JSON is needed.
+3. From `client/`, print the configured development key's SHA-1 in PowerShell:
+
+   ```powershell
+   & "$env:JAVA_HOME\bin\keytool.exe" -list -v -keystore .\signing\android-debug.jks -alias androiddebugkey -storepass android | Select-String 'SHA1:'
+   ```
+
+   This path applies when `APP_ANDROID_DEBUG_KEYSTORE=./signing/android-debug.jks`.
+   Otherwise inspect `android/app/debug.keystore` after prebuild. Register each
+   teammate's signing key, or securely share the team's development key; never commit it.
+4. Start the API, use a Google Play-enabled emulator, and run
+   `npm run android:emulator:apk` from `client/`. Rebuild after installing the native
+   dependency; Expo Go and an old APK cannot load it. Native Android uses autolinking;
+   do not add Firebase configuration or an iOS URL scheme for this Android-only setup.
+5. Test Google login, cancellation/retry, restart, logout, and GitHub login. A signing
+   key change may require uninstalling the old APK first (clears its local app data).
+   `DEVELOPER_ERROR` / code 10 means to check the package, SHA-1 and Web client ID.
+
+Tests: from `api/`, run `./gradlew test --tests 'com.example.demo.Google*'`;
+from `client/`, run `npm test -- --runInBand`. Automated tests use synthetic
+provider responses and tokens; real browser login was checked locally. Android
+registration and interactive sign-in are manual checks, not claims made by these tests.
 
 ## Database schema reference
 

@@ -16,7 +16,7 @@ const refresh = jest.fn().mockResolvedValue(undefined);
 function Wrapper({ children }: PropsWithChildren) { return <AdminQueryProvider>{children}</AdminQueryProvider>; }
 
 beforeEach(() => {
-  jest.mocked(useSession).mockReturnValue({ user: account, loading: false, error: null, refresh, retry: refresh, expire: jest.fn(), login: jest.fn(), logout: jest.fn() });
+  jest.mocked(useSession).mockReturnValue({ user: account, loading: false, error: null, refresh, retry: refresh, expire: jest.fn(), login: jest.fn(), loginGoogle: jest.fn(), loginGoogleAndroid: jest.fn(), logout: jest.fn() });
 });
 afterEach(() => { jest.restoreAllMocks(); });
 

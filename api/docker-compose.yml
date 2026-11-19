@@ -1,3 +1,6 @@
+# Run from the api folder: docker compose --env-file ../.env up --build
+#
+# Local development only. Physical devices need a reachable LAN or HTTPS API URL.
 # Run from the repository root. Default uses the hosted API; use --profile local
 # with EXPO_PUBLIC_API_URL=http://localhost:8080/api/v1 for the local API.
 services:

@@ -3,14 +3,15 @@
 ## Context — C4 level 1
 
 Members browse parts and manage PC builds. Administrators search users and parts.
-GitHub sign-in works; Google sign-in is required but still planned.
+GitHub and Google login are implemented on web and Android. Real Google Android
+sign-in still needs registration and device verification.
 
 ```mermaid
 flowchart LR
     Member["Member"] -->|"Browse parts and manage builds"| System["Build A PC"]
     Admin["Administrator"] -->|"Search users and parts"| System
     System <-->|"Sign in"| GitHub["GitHub"]
-    System <-.->|"Sign in — planned"| Google["Google"]
+    System <-->|"Web and native sign-in"| Google["Google"]
 ```
 
 ## Containers — C4 level 2
@@ -36,9 +37,9 @@ flowchart TB
     Web -->|"Authorization popup + PKCE"| GitHub["GitHub"]
     Android -->|"Browser + PKCE"| GitHub
     API -->|"Exchange code; fetch verified identity"| GitHub
-    Web -.->|"Planned sign-in"| Google["Google"]
-    Android -.->|"Planned native sign-in"| Google
-    API -.->|"Planned ID token verification"| Google
+    Web -->|"Authorization popup + PKCE"| Google["Google"]
+    Android -->|"Native Sign-In; ID token to API"| Google
+    API -->|"Exchange code; verify ID token with Google public keys"| Google
 ```
 
 The API issues a one-hour app JWT and enforces ownership and current database admin

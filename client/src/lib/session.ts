@@ -1,5 +1,6 @@
-import { ApiError, type AppUser, type GitHubLoginInput, type GitHubLoginResult } from './api';
+import { ApiError, type AppUser, type AuthCodeInput, type AppLoginResult } from './api';
 import type { TokenStore } from './tokenStore.types';
+import type { NativeGoogleAuth } from './google-native-flow';
 
 export interface SessionState {
   user: AppUser | null;
@@ -16,12 +17,16 @@ export class Session {
   private state: SessionState = SERVER_SNAPSHOT;
   private listeners = new Set<() => void>();
   private generation = 0;
+  private nativePending = false;
   private writes: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly dependencies: {
     store: TokenStore;
     getMe: () => Promise<AppUser>;
-    exchange: (input: GitHubLoginInput) => Promise<GitHubLoginResult>;
+    exchange: (input: AuthCodeInput) => Promise<AppLoginResult>;
+    exchangeGoogle: (input: AuthCodeInput) => Promise<AppLoginResult>;
+    exchangeGoogleToken?: (idToken: string) => Promise<AppLoginResult>;
+    nativeGoogle?: NativeGoogleAuth;
   }) {}
 
   getSnapshot = () => this.state;
@@ -56,7 +61,7 @@ export class Session {
         await this.write(() => this.dependencies.store.clear());
       } catch {
         if (generation === this.generation) {
-          this.update({ user: null, loading: false, error: 'Session ended, but browser storage could not be cleared. Retry logout.' });
+          this.update({ user: null, loading: false, error: 'Session ended, but session storage could not be cleared. Retry logout.' });
         }
         return;
       }
@@ -101,12 +106,43 @@ export class Session {
     await this.failed(new ApiError(401, 'Your session ended. Sign in again.'), generation);
   };
 
-  login = async (input: GitHubLoginInput) => {
+  /** Signs in through the existing GitHub exchange. */
+  login = (input: AuthCodeInput) =>
+    this.finishLogin(() => this.dependencies.exchange(input));
+
+  /** Signs in through the Google exchange. */
+  loginGoogle = (input: AuthCodeInput) =>
+    this.finishLogin(() => this.dependencies.exchangeGoogle(input));
+
+  /** Covers the native prompt and exchange with the same logout generation guard. */
+  loginGoogleAndroid = async () => {
+    if (this.nativePending || this.state.loading) return;
+    this.nativePending = true;
+    try {
+      await this.finishLogin(async (generation) => {
+        if (!this.dependencies.nativeGoogle || !this.dependencies.exchangeGoogleToken) {
+          throw new Error('Native Google sign-in is not configured.');
+        }
+        const token = await this.dependencies.nativeGoogle.signIn();
+        if (generation !== this.generation || token === null) return null;
+        return this.dependencies.exchangeGoogleToken(token);
+      });
+    } finally {
+      this.nativePending = false;
+    }
+  };
+
+  /** Applies identical token storage and session safeguards to both providers. */
+  private finishLogin = async (exchange: (generation: number) => Promise<AppLoginResult | null>) => {
     const generation = ++this.generation;
     this.update({ user: null, loading: true, error: null });
     try {
-      const result = await this.dependencies.exchange(input);
+      const result = await exchange(generation);
       if (generation !== this.generation) return;
+      if (result === null) {
+        this.update({ user: null, loading: false, error: null });
+        return;
+      }
       await this.write(async () => {
         if (generation === this.generation) await this.dependencies.store.set(result.token);
       });
@@ -125,7 +161,14 @@ export class Session {
       if (generation === this.generation) this.update({ user: null, loading: false, error: null });
     } catch {
       if (generation === this.generation) {
-        this.update({ user: null, loading: false, error: 'Could not clear browser storage. Retry logout.' });
+        this.update({ user: null, loading: false, error: 'Could not clear session storage. Retry logout.' });
+      }
+    }
+    try {
+      await this.dependencies.nativeGoogle?.signOut();
+    } catch {
+      if (generation === this.generation) {
+        this.update({ user: null, loading: false, error: 'Google session could not be cleared. Retry logout.' });
       }
     }
   };

@@ -19,7 +19,8 @@ URLs, release automation, and deployment access still need team confirmation.
 
 ## Rotate a secret
 
-Replace a leaked provider secret at GitHub, update Render's secret, and restart the
+Replace a leaked secret in GitHub OAuth Apps or the Google web OAuth client, update
+Render's corresponding secret, and restart the
 API. For the app signing key, securely generate at least 32 random bytes, update
 `APP_JWT_SECRET_BASE64`, and restart every API instance together. Existing JWTs become
 invalid; users must sign in again. Rotate database credentials in Supabase and update

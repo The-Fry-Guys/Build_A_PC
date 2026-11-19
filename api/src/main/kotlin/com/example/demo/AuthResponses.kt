@@ -10,6 +10,12 @@ class GitHubLoginResponse(
     val user: AuthUserResponse,
 )
 
+/** Google login result containing our app JWT and public account fields. */
+class GoogleLoginResponse(
+    val token: String,
+    val user: AuthUserResponse,
+)
+
 /** Public account fields defined by our API contract. */
 data class AuthUserResponse(
     val id: UUID,

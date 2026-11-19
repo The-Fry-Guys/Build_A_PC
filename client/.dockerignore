@@ -6,4 +6,6 @@ android/
 ios/
 .git/
 .env*
+signing/
+*.jks
 npm-debug.log*

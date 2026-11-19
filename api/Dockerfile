@@ -1,5 +1,5 @@
 # ---- Build stage ----
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:21-jdk-noble AS build
 WORKDIR /app/api
 
 # Copy build files first so dependency downloads are cached between builds
@@ -12,7 +12,7 @@ COPY docs/openapi.yaml /app/docs/openapi.yaml
 RUN ./gradlew bootJar -x test --no-daemon
 
 # ---- Runtime stage ----
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jre-noble
 WORKDIR /app
 
 RUN apt-get update \

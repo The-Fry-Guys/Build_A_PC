@@ -56,7 +56,11 @@ class SecurityConfig {
                     "/swagger-ui/**",
                 ).permitAll()
 
-                it.requestMatchers(HttpMethod.POST, "/api/v1/auth/github").permitAll()
+                it.requestMatchers(
+                    HttpMethod.POST,
+                    "/api/v1/auth/github",
+                    "/api/v1/auth/google",
+                ).permitAll()
 
                 it.requestMatchers(
                     HttpMethod.GET,

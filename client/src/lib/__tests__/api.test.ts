@@ -1,4 +1,4 @@
-import { ApiError, exchangeGitHubCode, getMe } from '../api';
+import { ApiError, exchangeGitHubCode, exchangeGoogleCode, exchangeGoogleIdToken, getMe } from '../api';
 import { tokenStore } from '../tokenStore';
 
 jest.mock('../tokenStore', () => ({
@@ -165,4 +165,58 @@ test('network failures produce a readable error', async () => {
   await expect(exchangeGitHubCode(input)).rejects.toThrow(
     'Could not reach the API. Check your connection and try again.',
   );
+});
+
+test('Google exchange sends the documented JSON without an existing JWT', async () => {
+  jest.mocked(tokenStore.get).mockResolvedValue('old-app-jwt');
+  fetchMock.mockResolvedValue(response(200, { token: 'google-app-jwt', user }));
+
+  await expect(exchangeGoogleCode(input)).resolves.toEqual({
+    token: 'google-app-jwt',
+    user,
+  });
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+
+  const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+  const headers = new Headers(options.headers);
+
+  expect(url).toBe('http://localhost:8080/api/v1/auth/google');
+  expect(options.method).toBe('POST');
+  expect(options.credentials).toBe('omit');
+  expect(JSON.parse(options.body as string)).toEqual({
+    code: input.code,
+    code_verifier: input.codeVerifier,
+    redirect_uri: input.redirectUri,
+  });
+  expect(headers.get('Content-Type')).toBe('application/json');
+  expect(headers.get('Accept')).toBe('application/json');
+  expect(headers.has('Authorization')).toBe(false);
+  expect(tokenStore.get).not.toHaveBeenCalled();
+  expect(tokenStore.set).not.toHaveBeenCalled();
+});
+
+test.each([
+  [409, 'Sign in with GitHub.'],
+  [502, 'Google sign-in could not be completed.'],
+  [503, 'Google sign-in is not configured.'],
+])('Google exchange preserves HTTP %s error details', async (status, detail) => {
+  fetchMock.mockResolvedValue(response(status, { detail }));
+
+  await expect(exchangeGoogleCode(input)).rejects.toMatchObject({
+    name: 'ApiError',
+    status,
+    message: detail,
+  });
+});
+
+test('native Google sends only the ID token without an app bearer token', async () => {
+  fetchMock.mockResolvedValue(response(200, { token: 'app-jwt', user }));
+  await expect(exchangeGoogleIdToken('native-token')).resolves.toEqual({ token: 'app-jwt', user });
+  const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+  expect(url).toBe('http://localhost:8080/api/v1/auth/google');
+  expect(JSON.parse(options.body as string)).toEqual({ idToken: 'native-token' });
+  expect(new Headers(options.headers).has('Authorization')).toBe(false);
+  expect(tokenStore.get).not.toHaveBeenCalled();
+  expect(tokenStore.set).not.toHaveBeenCalled();
 });
